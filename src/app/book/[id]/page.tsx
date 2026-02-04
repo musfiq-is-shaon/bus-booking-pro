@@ -82,6 +82,12 @@ export default function BookPage() {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bookingReference, setBookingReference] = useState<string | null>(null);
+  
+  // FIX: Store confirmed booking details for PDF generation
+  // These are saved before clearing selectedSeats after booking
+  const [confirmedSeats, setConfirmedSeats] = useState<number[]>([]);
+  const [confirmedPrice, setConfirmedPrice] = useState<number>(0);
+  const [confirmedReference, setConfirmedReference] = useState<string>('');
 
   useEffect(() => {
     const fetchSchedule = async () => {
@@ -223,7 +229,16 @@ export default function BookPage() {
       }
 
       // Booking successful - createBooking already handles seat updates and confirmation
-      setBookingReference(result.data?.booking_reference || null);
+      const reference = result.data?.booking_reference || '';
+      const finalPrice = totalPrice;
+      const finalSeats = [...selectedSeats];
+      
+      // FIX: Save confirmed values BEFORE clearing selectedSeats
+      // These will be used for PDF generation in the confirmation step
+      setConfirmedReference(reference);
+      setConfirmedPrice(finalPrice);
+      setConfirmedSeats(finalSeats);
+      setBookingReference(reference);
       setCurrentStep('confirmation');
       
       // Force refresh the entire page to trigger revalidation
@@ -557,13 +572,13 @@ export default function BookPage() {
                   </div>
                   <h2 className="text-2xl font-bold text-secondary-900 mb-2">Booking Confirmed!</h2>
                   <p className="text-secondary-600 mb-6">
-                    Your booking reference is <span className="font-mono font-bold text-primary-600">{bookingReference}</span>
+                    Your booking reference is <span className="font-mono font-bold text-primary-600">{confirmedReference || bookingReference}</span>
                   </p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <button 
                       onClick={() => {
                         const ticketData: TicketData = {
-                          bookingReference: bookingReference || '',
+                          bookingReference: confirmedReference || bookingReference || '',
                           passengerName: passengers[0]?.name || 'Passenger',
                           fromCity: schedule.route?.from_city || 'Unknown',
                           toCity: schedule.route?.to_city || 'Unknown',
@@ -572,8 +587,8 @@ export default function BookPage() {
                           arrivalTime: formatTime(schedule.arrival_time),
                           busName: schedule.bus?.bus_name || 'Unknown Bus',
                           busType: schedule.bus?.bus_type || 'standard',
-                          seats: selectedSeats,
-                          price: totalPrice,
+                          seats: confirmedSeats.length > 0 ? confirmedSeats : selectedSeats,
+                          price: confirmedPrice > 0 ? confirmedPrice : totalPrice,
                         };
                         downloadTicketPDF(ticketData);
                       }}
