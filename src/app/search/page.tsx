@@ -243,7 +243,6 @@ function SearchContent() {
             `)
             .in('route_id', routeIds)
             .eq('status', 'scheduled')
-            .gt('available_seats', 0)
             .gte('departure_time', startISO)
             .lt('departure_time', endISO)
             .order('departure_time', { ascending: true });
@@ -265,7 +264,30 @@ function SearchContent() {
                 } : null
               };
             });
-            setSchedules(enrichedSchedules);
+
+            // Recalculate available seats from seat_availability table
+            const scheduleIds = enrichedSchedules.map(s => s.id);
+            const { data: latestSeats, error: seatsError } = await supabase
+              .from('seat_availability')
+              .select('schedule_id, status')
+              .in('schedule_id', scheduleIds);
+
+            if (!seatsError && latestSeats) {
+              const availableCounts: Record<string, number> = {};
+              scheduleIds.forEach(id => availableCounts[id] = 0);
+              latestSeats.forEach(seat => {
+                if (seat.status === 'available') {
+                  availableCounts[seat.schedule_id] = (availableCounts[seat.schedule_id] || 0) + 1;
+                }
+              });
+              const correctedData = enrichedSchedules.map(schedule => ({
+                ...schedule,
+                available_seats: availableCounts[schedule.id] || 0
+              })).filter(s => s.available_seats > 0);
+              setSchedules(correctedData);
+            } else {
+              setSchedules(enrichedSchedules);
+            }
             setLoading(false);
             return;
           }
@@ -278,7 +300,7 @@ function SearchContent() {
 
       const routeIds = routes.map((r: RouteData) => r.id);
 
-      // Fetch schedules for these routes
+      // Fetch schedules for these routes - don't filter by available_seats, we'll recalculate from seat_availability
       const { data: schedulesData, error: schedulesError } = await supabase
         .from('schedules')
         .select(`
@@ -287,7 +309,6 @@ function SearchContent() {
         `)
         .in('route_id', routeIds)
         .eq('status', 'scheduled')
-        .gt('available_seats', 0)
         .gte('departure_time', startISO)
         .lt('departure_time', endISO)
         .order('departure_time', { ascending: true });
@@ -312,7 +333,6 @@ function SearchContent() {
           `)
           .in('route_id', routeIds)
           .eq('status', 'scheduled')
-          .gt('available_seats', 0)
           .order('departure_time', { ascending: true });
 
         if (broadError) {
@@ -331,7 +351,30 @@ function SearchContent() {
               ...schedule,
               route: routes.find((r: RouteData) => r.id === schedule.route_id) || null
             }));
-            setSchedules(enrichedData);
+
+            // Recalculate available seats
+            const scheduleIds = enrichedData.map(s => s.id);
+            const { data: latestSeats, error: seatsError } = await supabase
+              .from('seat_availability')
+              .select('schedule_id, status')
+              .in('schedule_id', scheduleIds);
+
+            if (!seatsError && latestSeats) {
+              const availableCounts: Record<string, number> = {};
+              scheduleIds.forEach(id => availableCounts[id] = 0);
+              latestSeats.forEach(seat => {
+                if (seat.status === 'available') {
+                  availableCounts[seat.schedule_id] = (availableCounts[seat.schedule_id] || 0) + 1;
+                }
+              });
+              const correctedData = enrichedData.map(schedule => ({
+                ...schedule,
+                available_seats: availableCounts[schedule.id] || 0
+              })).filter(s => s.available_seats > 0);
+              setSchedules(correctedData);
+            } else {
+              setSchedules(enrichedData);
+            }
           } else {
             setSchedules([]);
             setErrorMessage(`No buses found for ${fromCity} to ${toCity} on ${formatDate(date)}. Try a different date.`);
@@ -355,7 +398,6 @@ function SearchContent() {
               `)
               .in('route_id', reverseRouteIds)
               .eq('status', 'scheduled')
-              .gt('available_seats', 0)
               .order('departure_time', { ascending: true });
 
             if (!reverseError && reverseSchedules && reverseSchedules.length > 0) {
@@ -376,7 +418,30 @@ function SearchContent() {
                     } : null
                   };
                 });
-                setSchedules(enrichedSchedules);
+
+                // Recalculate available seats
+                const scheduleIds = enrichedSchedules.map(s => s.id);
+                const { data: latestSeats, error: seatsError } = await supabase
+                  .from('seat_availability')
+                  .select('schedule_id, status')
+                  .in('schedule_id', scheduleIds);
+
+                if (!seatsError && latestSeats) {
+                  const availableCounts: Record<string, number> = {};
+                  scheduleIds.forEach(id => availableCounts[id] = 0);
+                  latestSeats.forEach(seat => {
+                    if (seat.status === 'available') {
+                      availableCounts[seat.schedule_id] = (availableCounts[seat.schedule_id] || 0) + 1;
+                    }
+                  });
+                  const correctedData = enrichedSchedules.map(schedule => ({
+                    ...schedule,
+                    available_seats: availableCounts[schedule.id] || 0
+                  })).filter(s => s.available_seats > 0);
+                  setSchedules(correctedData);
+                } else {
+                  setSchedules(enrichedSchedules);
+                }
                 setLoading(false);
                 return;
               }
@@ -389,13 +454,44 @@ function SearchContent() {
         return;
       }
 
-      // Enrich with route data
+      // Enrich with route data and recalculate available seats
       if (schedulesData && schedulesData.length > 0) {
         const enrichedData = schedulesData.map((schedule: any) => ({
           ...schedule,
           route: routes.find((r: RouteData) => r.id === schedule.route_id) || null
         }));
-        setSchedules(enrichedData);
+
+        // Immediately recalculate available seats from seat_availability table
+        const scheduleIds = enrichedData.map(s => s.id);
+        const { data: latestSeats, error: seatsError } = await supabase
+          .from('seat_availability')
+          .select('schedule_id, status')
+          .in('schedule_id', scheduleIds);
+
+        if (!seatsError && latestSeats) {
+          const availableCounts: Record<string, number> = {};
+          scheduleIds.forEach(id => availableCounts[id] = 0);
+
+          latestSeats.forEach(seat => {
+            if (seat.status === 'available') {
+              availableCounts[seat.schedule_id] = (availableCounts[seat.schedule_id] || 0) + 1;
+            }
+          });
+
+          // Update enriched data with correct available seats
+          const correctedData = enrichedData.map(schedule => ({
+            ...schedule,
+            available_seats: availableCounts[schedule.id] || 0
+          }));
+
+          // Filter out schedules with 0 available seats
+          const filteredData = correctedData.filter(schedule => schedule.available_seats > 0);
+
+          setSchedules(filteredData);
+        } else {
+          setSchedules(enrichedData);
+        }
+
         setErrorMessage(null);
       } else {
         setSchedules([]);
@@ -444,7 +540,20 @@ function SearchContent() {
         }
       });
 
-      // Update schedules with recalculated counts
+      // Update schedules in database with recalculated counts
+      for (const scheduleId of scheduleIds) {
+        const availableCount = availableCounts[scheduleId] || 0;
+        const { error: updateError } = await supabase
+          .from('schedules')
+          .update({ available_seats: availableCount })
+          .eq('id', scheduleId);
+        
+        if (updateError) {
+          console.error(`Error updating schedule ${scheduleId}:`, updateError);
+        }
+      }
+
+      // Update local state with recalculated counts
       setSchedules(prevSchedules => 
         prevSchedules.map(schedule => ({
           ...schedule,
@@ -467,41 +576,52 @@ function SearchContent() {
     }
   }, [hasSearched, schedules.length, recalculateAvailableSeats]);
 
-  // Refresh search results when page is focused (e.g., after booking)
+  // Refresh search results when page is focused (e.g., after booking or cancellation)
   useEffect(() => {
-    const handleFocus = async () => {
-      if (hasSearched && fromCity && toCity && date) {
-        console.log('[Search] Refreshing search results due to page focus...');
-        
-        // First, recalculate seats from seat_availability table for accuracy
-        await recalculateAvailableSeats();
-        
-        // Then refresh the search results
-        handleSearch();
+    let isActive = true;
+    let refreshInterval: NodeJS.Timeout | null = null;
+
+    const refreshData = async () => {
+      if (!isActive || !hasSearched || !fromCity || !toCity || !date) return;
+      
+      console.log('[Search] Refreshing search results (focus/interval)...');
+      
+      // Force fresh search
+      initializedRef.current = false;
+      await handleSearch();
+    };
+
+    const handleFocus = () => {
+      refreshData();
+    };
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        // Add small delay to ensure database updates are committed
+        setTimeout(refreshData, 200);
       }
     };
 
-    // Listen for visibility change (tab switch)
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && hasSearched && fromCity && toCity && date) {
-        console.log('[Search] Refreshing search results due to tab focus...');
-        
-        // First, recalculate seats from seat_availability table for accuracy
-        await recalculateAvailableSeats();
-        
-        // Then refresh the search results
-        handleSearch();
+    // Also set up an interval to refresh every 10 seconds for active tab
+    refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && hasSearched) {
+        refreshData();
       }
-    };
+    }, 10000);
 
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
+    // Initial refresh on mount
+    refreshData();
+    
     return () => {
+      isActive = false;
+      if (refreshInterval) clearInterval(refreshInterval);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [hasSearched, fromCity, toCity, date, handleSearch, recalculateAvailableSeats]);
+  }, [hasSearched, fromCity, toCity, date, handleSearch]);
 
   // Auto-search if params are provided - fixed with proper initialization check
   useEffect(() => {
@@ -810,13 +930,25 @@ function SearchContent() {
         </Link>
 
         {hasSearched && !loading && (
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-secondary-900">
-              {fromCity} <span className="text-secondary-400">→</span> {toCity}
-            </h1>
-            <p className="text-secondary-600">
-              {date && formatDate(date)} • {schedules.length} buses found
-            </p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-secondary-900">
+                {fromCity} <span className="text-secondary-400">→</span> {toCity}
+              </h1>
+              <p className="text-secondary-600">
+                {date && formatDate(date)} • {schedules.length} buses found
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                initializedRef.current = false;
+                handleSearch();
+              }}
+              className="btn-secondary btn-sm flex items-center gap-2"
+            >
+              <Search className="w-4 h-4" />
+              Refresh
+            </button>
           </div>
         )}
 

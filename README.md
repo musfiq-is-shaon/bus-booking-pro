@@ -53,6 +53,7 @@ A modern, full-featured bus booking application built with Next.js 14, Supabase,
 - **Self-service Cancellation** - Users can cancel their own bookings
 - **Cancellation Confirmation** - Modal confirmation before cancellation
 - **Automatic Seat Release** - Cancelled seats automatically become available
+- **Atomic Seat Restoration** - Seats are properly restored to available status on cancellation
 - **Available Seats Update** - Real-time update of available seats count
 - **Refund Information** - Shows refund processing timeframe
 
@@ -97,6 +98,7 @@ A modern, full-featured bus booking application built with Next.js 14, Supabase,
 
 ### Key Database Functions
 - `confirm_booking_and_update_seats()` - Confirms booking and updates seat status
+- `cancel_booking_with_seat_update()` - Cancels booking and restores seats to available
 - `lock_seats_for_booking()` - Temporarily locks seats during checkout
 - `release_expired_seat_locks()` - Auto-releases expired seat locks
 - `prevent_bus_overlap()` - Prevents bus schedule conflicts
@@ -210,7 +212,8 @@ Run the SQL files in Supabase SQL Editor in this order:
 1. `supabase/schema.sql` - Creates all tables, RLS policies, and functions
 2. `supabase/seed.sql` - Adds sample data (buses, routes, schedules)
 3. `supabase/fix_seat_rls_policy.sql` - Fixes seat availability RLS policies
-4. `supabase/daily_seat_limit_function.sql` - Adds daily seat limit function (optional)
+4. `supabase/cancel_booking_with_seat_update.sql` - Adds atomic cancellation function for seat restoration
+5. `supabase/daily_seat_limit_function.sql` - Adds daily seat limit function (optional)
 
 ## 🔧 Environment Variables
 

@@ -468,43 +468,72 @@ export async function cancelBooking(bookingId: string) {
       return { error: 'Cannot cancel a completed booking' };
     }
 
-    // Update booking status
-    const { error: updateError } = await supabase
-      .from('bookings')
-      .update({ status: 'cancelled' })
-      .eq('id', bookingId);
+    // Try to use the atomic cancel function first
+    const { data: rpcResult, error: rpcError } = await supabase
+      .rpc('cancel_booking_with_seat_update', {
+        p_booking_id: bookingId,
+        p_user_id: user.id
+      });
 
-    if (updateError) {
-      return { error: updateError.message };
+    if (rpcError) {
+      console.warn('RPC cancel_booking_with_seat_update failed, using fallback:', rpcError.message);
+      
+      // Fallback: Manual cancellation
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', bookingId);
+
+      if (updateError) {
+        return { error: updateError.message };
+      }
+
+      // Release seats (make them available again, NOT delete)
+      const { error: seatError } = await supabase
+        .from('seat_availability')
+        .update({
+          status: 'available',
+          booked_by: null,
+          booked_at: null,
+          lock_expires_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('schedule_id', booking.schedule_id)
+        .in('seat_number', booking.seats_booked);
+
+      if (seatError) {
+        console.error('[cancelBooking] Seat release error:', seatError);
+      }
+
+      // Get total seats and calculate available count properly
+      const { data: allSeats, error: countError } = await supabase
+        .from('seat_availability')
+        .select('status')
+        .eq('schedule_id', booking.schedule_id);
+
+      if (countError) {
+        console.error('[cancelBooking] Count error:', countError);
+      }
+
+      const totalSeats = allSeats?.length || 0;
+      const availableSeats = allSeats?.filter(s => s.status === 'available').length || 0;
+      const bookedSeats = allSeats?.filter(s => s.status === 'booked').length || 0;
+
+      console.log(`[cancelBooking] Total: ${totalSeats}, Available: ${availableSeats}, Booked: ${bookedSeats}`);
+
+      // Update available seats count
+      const { error: scheduleError } = await supabase
+        .from('schedules')
+        .update({
+          available_seats: availableSeats,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.schedule_id);
+
+      if (scheduleError) {
+        console.error('[cancelBooking] Schedule update error:', scheduleError);
+      }
     }
-
-    // Release seats (make them available again, NOT delete)
-    await supabase
-      .from('seat_availability')
-      .update({
-        status: 'available',
-        booked_by: null,
-        booked_at: null,
-        lock_expires_at: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('schedule_id', booking.schedule_id)
-      .in('seat_number', booking.seats_booked);
-
-    // Update available seats count properly
-    const { count: newAvailableCount } = await supabase
-      .from('seat_availability')
-      .select('*', { count: 'exact', head: true })
-      .eq('schedule_id', booking.schedule_id)
-      .eq('status', 'available');
-
-    await supabase
-      .from('schedules')
-      .update({
-        available_seats: newAvailableCount || 0,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', booking.schedule_id);
 
     // Revalidate all relevant paths to update seat availability across the app
     revalidatePath('/dashboard');

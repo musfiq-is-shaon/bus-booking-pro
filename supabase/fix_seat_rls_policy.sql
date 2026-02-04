@@ -8,9 +8,10 @@
 -- Drop existing policies that might conflict
 DROP POLICY IF EXISTS "Users can update own seat bookings" ON seat_availability;
 DROP POLICY IF EXISTS "Anyone can update seats" ON seat_availability;
+DROP POLICY IF EXISTS "Users can book seats" ON seat_availability;
 
 -- Allow users to update seat availability when booking (mark as booked)
-CREATE POLICY "Users can book seats" ON seat_availability
+CREATE POLICY "Users can book and release seats" ON seat_availability
   FOR UPDATE
   USING (
     status = 'available' 
@@ -18,8 +19,10 @@ CREATE POLICY "Users can book seats" ON seat_availability
     OR (status = 'reserved' AND booked_by = auth.uid())
   )
   WITH CHECK (
-    status = 'booked' 
-    AND booked_by = auth.uid()
+    -- Allow setting status to 'booked' when booking
+    (status = 'booked' AND booked_by = auth.uid())
+    -- OR allow setting status to 'available' when releasing/canceling
+    OR (status = 'available' AND booked_by IS NULL)
   );
 
 -- Allow users to view all seat availability (for seeing which seats are taken)
