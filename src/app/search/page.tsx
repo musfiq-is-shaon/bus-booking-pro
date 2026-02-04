@@ -19,7 +19,7 @@ import {
   LogOut,
   Menu
 } from 'lucide-react';
-import { formatCurrency, formatTime, formatDate, CITIES, BUS_TYPES, isDateInPast } from '@/lib/utils';
+import { formatCurrency, formatTime, formatDate, CITIES, BUS_TYPES, isDateInPast, canBookSchedule, getMinutesUntilDeparture } from '@/lib/utils';
 import { useTheme } from '@/lib/theme-provider';
 
 // Calculate price based on distance if route price is null or 0
@@ -28,7 +28,7 @@ function calculatePrice(price: number | null | undefined, distanceKm: number | n
   
   // Default pricing based on distance (BDT) - realistic Bangladesh bus fares
   const distance = distanceKm || 100;
-  
+
   // Short distance (up to 100km)
   if (distance <= 50) return 150;
   if (distance <= 75) return 200;
@@ -122,6 +122,9 @@ function SearchContent() {
       setErrorMessage('This bus has already departed. Please select an upcoming bus.');
       // Clear the error query param
       router.replace('/search', { scroll: false });
+    } else if (searchParams.get('error') === 'tooClose') {
+      setErrorMessage('Cannot book tickets within 15 minutes of departure. Please select an upcoming bus.');
+      router.replace('/search', { scroll: false });
     }
   }, [searchParams, router]);
 
@@ -167,22 +170,27 @@ function SearchContent() {
     return { start: startOfDay, end: endOfDay };
   };
 
-  // Get day bounds in Bangladesh time (UTC+6)
+  // Get day bounds for Bangladesh timezone (UTC+6)
+  // Always use explicit UTC to avoid browser local timezone issues
   const getDayBoundsLocal = (dateStr: string) => {
-    // Parse YYYY-MM-DD
+    // Parse YYYY-MM-DD manually to avoid timezone conversion
     const year = parseInt(dateStr.substring(0, 4));
     const month = parseInt(dateStr.substring(5, 7)) - 1;
     const day = parseInt(dateStr.substring(8, 10));
     
-    // Bangladesh is UTC+6
-    // Local midnight = 18:00 UTC previous day
-    // So for Feb 4 local, we search from Feb 3 18:00 UTC to Feb 4 18:00 UTC
-    const startOfDay = new Date(Date.UTC(year, month, day, 18, 0, 0));
-    const endOfDay = new Date(Date.UTC(year, month, day + 1, 18, 0, 0));
+    // For a date like "2024-02-05":
+    // We want Feb 5 00:00 Bangladesh to Feb 5 23:59 Bangladesh
+    // Since Bangladesh is UTC+6:
+    // - Feb 5 00:00 Bangladesh = Feb 4 18:00 UTC
+    // - Feb 5 23:59 Bangladesh = Feb 5 17:59 UTC
+    // - Feb 6 00:00 Bangladesh = Feb 5 18:00 UTC
+    // So query Feb 4 18:00 UTC to Feb 5 18:00 UTC (exclusive end)
+    const startOfDayUTC = Date.UTC(year, month, day - 1, 18, 0, 0);
+    const endOfDayUTC = Date.UTC(year, month, day, 18, 0, 0);
     
     return {
-      start: startOfDay.toISOString(),
-      end: endOfDay.toISOString()
+      start: new Date(startOfDayUTC).toISOString(),
+      end: new Date(endOfDayUTC).toISOString()
     };
   };
 
@@ -201,12 +209,23 @@ function SearchContent() {
       return;
     }
 
+    // Get current time in UTC - schedules must not have already departed
+    const now = new Date();
+    const currentTimeUTC = now.toISOString();
+
     setLoading(true);
     setHasSearched(true);
     setErrorMessage(null);
 
     try {
       const { start: startISO, end: endISO } = getDayBoundsLocal(date);
+      
+      console.log('[Search] Date search params:', {
+        date,
+        startISO,
+        endISO,
+        currentTimeUTC
+      });
 
       // First, fetch routes matching the cities
       const { data: routes, error: routesError } = await supabase
@@ -245,6 +264,8 @@ function SearchContent() {
             .eq('status', 'scheduled')
             .gte('departure_time', startISO)
             .lt('departure_time', endISO)
+            // Filter out schedules that have already departed
+            .gte('departure_time', currentTimeUTC)
             .order('departure_time', { ascending: true });
 
           if (schedulesError) {
@@ -311,7 +332,17 @@ function SearchContent() {
         .eq('status', 'scheduled')
         .gte('departure_time', startISO)
         .lt('departure_time', endISO)
+        // Filter out schedules that have already departed (only gte needed, not gt)
+        .gte('departure_time', currentTimeUTC)
         .order('departure_time', { ascending: true });
+
+      console.log('[Search] Query results:', {
+        schedulesDataCount: schedulesData?.length || 0,
+        startISO,
+        endISO,
+        currentTimeUTC,
+        routeIds: routeIds.length
+      });
 
       if (schedulesError) {
         console.error('Error fetching schedules:', schedulesError);
@@ -320,6 +351,22 @@ function SearchContent() {
         setLoading(false);
         return;
       }
+
+      // Log each schedule's departure time for debugging
+      if (schedulesData && schedulesData.length > 0) {
+        console.log('[Search] Raw schedule times from DB:');
+        schedulesData.forEach((s: any) => {
+          console.log('  -', s.departure_time, '->', formatTime(s.departure_time));
+        });
+      }
+
+      // Filter out schedules that have already departed or are too close to departure
+      const bookableSchedules = schedulesData?.filter((schedule: any) => 
+        canBookSchedule(schedule.departure_time)
+      ) || [];
+
+      console.log('[Search] Total from DB:', schedulesData?.length || 0);
+      console.log('[Search] After filtering:', bookableSchedules.length);
 
       // If no results with date filter, try without date filter
       if (!schedulesData || schedulesData.length === 0) {
@@ -333,6 +380,8 @@ function SearchContent() {
           `)
           .in('route_id', routeIds)
           .eq('status', 'scheduled')
+          // Filter out schedules that have already departed
+          .gte('departure_time', currentTimeUTC)
           .order('departure_time', { ascending: true });
 
         if (broadError) {
@@ -398,6 +447,8 @@ function SearchContent() {
               `)
               .in('route_id', reverseRouteIds)
               .eq('status', 'scheduled')
+              // Filter out schedules that have already departed
+              .gte('departure_time', currentTimeUTC)
               .order('departure_time', { ascending: true });
 
             if (!reverseError && reverseSchedules && reverseSchedules.length > 0) {
@@ -456,10 +507,14 @@ function SearchContent() {
 
       // Enrich with route data and recalculate available seats
       if (schedulesData && schedulesData.length > 0) {
+        console.log('[Search] Initial schedulesData count:', schedulesData.length);
+        
         const enrichedData = schedulesData.map((schedule: any) => ({
           ...schedule,
           route: routes.find((r: RouteData) => r.id === schedule.route_id) || null
         }));
+
+        console.log('[Search] After enrichment:', enrichedData.length);
 
         // Immediately recalculate available seats from seat_availability table
         const scheduleIds = enrichedData.map(s => s.id);
@@ -478,22 +533,38 @@ function SearchContent() {
             }
           });
 
+          console.log('[Search] Available counts calculated');
+
           // Update enriched data with correct available seats
           const correctedData = enrichedData.map(schedule => ({
             ...schedule,
             available_seats: availableCounts[schedule.id] || 0
           }));
 
+          console.log('[Search] After seat correction:', correctedData.length);
+
           // Filter out schedules with 0 available seats
           const filteredData = correctedData.filter(schedule => schedule.available_seats > 0);
 
-          setSchedules(filteredData);
+          console.log('[Search] After filtering 0 seats:', filteredData.length);
+
+          // Filter out schedules that have already departed or are too close to departure
+          const bookableSchedules = filteredData.filter(schedule => 
+            canBookSchedule(schedule.departure_time)
+          );
+
+          console.log('[Search] After filtering departed schedules:', bookableSchedules.length);
+          console.log('[Search] Final schedules to show:', bookableSchedules.length);
+
+          setSchedules(bookableSchedules);
         } else {
-          setSchedules(enrichedData);
+          setSchedules(enrichedData.filter(s => s.available_seats > 0));
+          console.log('[Search] No seat data, showing enriched only:', enrichedData.length);
         }
 
         setErrorMessage(null);
       } else {
+        console.log('[Search] No schedules found');
         setSchedules([]);
         setErrorMessage(`No buses found for ${fromCity} to ${toCity} on ${formatDate(date)}`);
       }
@@ -980,7 +1051,9 @@ function SearchContent() {
           </div>
         ) : schedules.length > 0 ? (
           <div className="space-y-4">
-            {schedules.map((schedule) => (
+            {/* All schedules are already filtered to only show bookable ones */}
+            {schedules
+              .map((schedule) => (
               <div
                 key={schedule.id}
                 className="card-hover p-6"

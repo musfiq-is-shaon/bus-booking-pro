@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from './auth';
-import { generateBookingReference, isDateTimeInPast } from '@/lib/utils';
+import { generateBookingReference, isDateTimeInPast, canBookSchedule, getMinutesUntilDeparture, getNowInBangladeshTime } from '@/lib/utils';
 import { searchSchedulesSchema, createBookingSchema } from '@/lib/schemas';
 
 export async function searchSchedules(formData: FormData) {
@@ -42,6 +42,9 @@ export async function searchSchedules(formData: FormData) {
     const endOfDay = new Date(validated.data.date);
     endOfDay.setHours(23, 59, 59, 999);
 
+    const now = getNowInBangladeshTime();
+    const currentTime = now.toISOString();
+
     const { data: schedules, error } = await supabase
       .from('schedules')
       .select(`
@@ -53,6 +56,8 @@ export async function searchSchedules(formData: FormData) {
       .eq('status', 'scheduled')
       .gte('departure_time', startOfDay.toISOString())
       .lte('departure_time', endOfDay.toISOString())
+      // Filter out schedules that have already departed (departure_time >= now)
+      .gte('departure_time', currentTime)
       .gt('available_seats', 0)
       .order('departure_time', { ascending: true });
 
@@ -173,10 +178,16 @@ export async function createBooking(formData: FormData) {
       return { error: 'Schedule not found' };
     }
 
-    // Check if the schedule departure time is in the past
-    if (isDateTimeInPast(schedule.departure_time)) {
-      console.log('[createBooking] Schedule is in the past, blocking booking');
-      return { error: 'Cannot book tickets for a schedule that has already departed. Please select an upcoming bus.' };
+    // Check if the schedule departure time is in the past or too close
+    if (!canBookSchedule(schedule.departure_time)) {
+      const minutesUntilDeparture = getMinutesUntilDeparture(schedule.departure_time);
+      console.log('[createBooking] Schedule is too close to departure or has departed, blocking booking');
+      
+      if (minutesUntilDeparture < 0) {
+        return { error: 'Cannot book tickets for a schedule that has already departed. Please select an upcoming bus.' };
+      } else {
+        return { error: `Cannot book tickets within ${15} minutes of departure. This bus departs in ${minutesUntilDeparture} minute(s). Please select an upcoming bus.` };
+      }
     }
 
     // Check if seats are still available

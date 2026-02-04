@@ -19,7 +19,7 @@ import {
   AlertCircle,
   Download
 } from 'lucide-react';
-import { formatCurrency, formatDate, formatTime, getStatusColor, downloadTicketPDF, type TicketData, isDateTimeInPast } from '@/lib/utils';
+import { formatCurrency, formatDate, formatTime, getStatusColor, downloadTicketPDF, type TicketData, isDateTimeInPast, canBookSchedule, getMinutesUntilDeparture } from '@/lib/utils';
 import { createBooking } from '@/actions/bookings';
 
 interface SeatLayout {
@@ -114,9 +114,14 @@ export default function BookPage() {
           return;
         }
 
-        // Check if the schedule departure time is in the past
-        if (isDateTimeInPast(data.departure_time)) {
-          router.push('/search?error=past');
+        // Check if the schedule departure time is in the past or too close to departure
+        if (!canBookSchedule(data.departure_time)) {
+          const minutesUntilDeparture = getMinutesUntilDeparture(data.departure_time);
+          if (minutesUntilDeparture < 0) {
+            router.push('/search?error=past');
+          } else {
+            router.push('/search?error=tooClose');
+          }
           return;
         }
 

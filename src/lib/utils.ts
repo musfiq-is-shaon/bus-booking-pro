@@ -7,9 +7,15 @@ export function cn(...inputs: ClassValue[]) {
 
 // Date validation utilities
 export function isDateInPast(dateStr: string): boolean {
+  // Parse YYYY-MM-DD - browsers treat this as local time
+  // We need to compare correctly against Bangladesh date
+  const selectedDate = new Date(dateStr);
   const today = new Date();
+  
+  // Reset hours to compare just the dates
   today.setHours(0, 0, 0, 0);
-  const selectedDate = new Date(dateStr + 'T00:00:00');
+  selectedDate.setHours(0, 0, 0, 0);
+  
   return selectedDate < today;
 }
 
@@ -17,6 +23,58 @@ export function isDateTimeInPast(dateTimeStr: string): boolean {
   const selectedDateTime = new Date(dateTimeStr);
   const now = new Date();
   return selectedDateTime < now;
+}
+
+// Minimum minutes required before departure to allow booking
+export const MINUTES_BEFORE_DEPARTURE = 15;
+
+// Get current time in Bangladesh timezone (UTC+6)
+export function getNowInBangladeshTime(): Date {
+  const now = new Date();
+  
+  // Bangladesh is UTC+6
+  const bangladeshOffsetHours = 6;
+  
+  // Get the UTC timestamp
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+  
+  // Add 6 hours to get Bangladesh time
+  return new Date(utcTime + (bangladeshOffsetHours * 60 * 60 * 1000));
+}
+
+export function canBookSchedule(dateTimeStr: string): boolean {
+  // Supabase returns timestamps with timezone info (e.g., "2026-02-05T13:00:00+00:00")
+  // We need to parse them correctly and compare against Bangladesh time
+  const now = getNowInBangladeshTime();
+  
+  // Parse the departure time - JavaScript's Date handles ISO 8601 correctly
+  const departureTime = new Date(dateTimeStr);
+  
+  // If parsing failed, return false (don't show invalid schedules)
+  if (isNaN(departureTime.getTime())) {
+    console.warn('[canBookSchedule] Invalid date:', dateTimeStr);
+    return false;
+  }
+  
+  // Calculate the latest booking time (15 minutes before departure)
+  const latestBookingTime = new Date(departureTime.getTime() - MINUTES_BEFORE_DEPARTURE * 60 * 1000);
+  
+  // Debug logging
+  console.log('[canBookSchedule] Raw DB time:', dateTimeStr);
+  console.log('[canBookSchedule] Parsed departure:', departureTime.toISOString());
+  console.log('[canBookSchedule] Now (Bangladesh):', now.toISOString());
+  console.log('[canBookSchedule] Latest booking:', latestBookingTime.toISOString());
+  console.log('[canBookSchedule] Result:', now.getTime() < latestBookingTime.getTime());
+  
+  // Allow booking only if current time is before the latest booking time
+  return now.getTime() < latestBookingTime.getTime();
+}
+
+export function getMinutesUntilDeparture(dateTimeStr: string): number {
+  const now = getNowInBangladeshTime();
+  const departureTime = new Date(dateTimeStr);
+  const diffMs = departureTime.getTime() - now.getTime();
+  return Math.floor(diffMs / (1000 * 60)); // Convert to minutes
 }
 
 export function getCurrentDateString(): string {
@@ -28,6 +86,9 @@ export function getCurrentDateTimeString(): string {
   return new Date().toISOString();
 }
 
+// Bangladesh timezone is UTC+6
+const BANGLADESH_TIMEZONE = 'Asia/Dhaka';
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-BD', {
     style: 'currency',
@@ -37,8 +98,9 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function formatDate(date: string | Date): string {
+export function formatDate(date: string | Date, timeZone: string = BANGLADESH_TIMEZONE): string {
   return new Intl.DateTimeFormat('en-IN', {
+    timeZone,
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -46,12 +108,22 @@ export function formatDate(date: string | Date): string {
   }).format(new Date(date));
 }
 
-export function formatTime(date: string | Date): string {
+export function formatTime(date: string | Date, timeZone: string = BANGLADESH_TIMEZONE): string {
+  // Supabase returns timestamps with timezone info (e.g., "2026-02-05T13:00:00+00:00")
+  // JavaScript's Date.parse handles ISO 8601 correctly, so we can parse directly
+  const dateObj = new Date(date);
+  
+  // If parsing failed, return placeholder
+  if (isNaN(dateObj.getTime())) {
+    return '--:--';
+  }
+  
   return new Intl.DateTimeFormat('en-IN', {
+    timeZone,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true,
-  }).format(new Date(date));
+  }).format(dateObj);
 }
 
 export function formatDateTime(date: string | Date): string {
