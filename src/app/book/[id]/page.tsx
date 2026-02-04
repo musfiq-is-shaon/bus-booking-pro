@@ -247,6 +247,28 @@ export default function BookPage() {
       // Booking successful
       setBookingReference(result.data?.booking_reference || null);
       setCurrentStep('confirmation');
+      
+      // Force refresh seat availability data on the client side
+      // This ensures other users see the updated seat availability immediately
+      const { data: seatsData } = await supabase
+        .from('seat_availability')
+        .select('*')
+        .eq('schedule_id', schedule!.id)
+        .order('seat_number', { ascending: true });
+
+      // Regenerate seats array with fresh data
+      const seatsArray: Seat[] = [];
+      for (let i = 1; i <= schedule!.bus.total_seats; i++) {
+        const seatAvailability = seatsData?.find(s => s.seat_number === i);
+        seatsArray.push({
+          seat_number: i,
+          status: seatAvailability?.status as 'available' | 'booked' | 'reserved' || 'available',
+        });
+      }
+      setSeats(seatsArray);
+      
+      // Clear selected seats as they're now booked
+      setSelectedSeats([]);
     } catch (err) {
       console.error('Booking error:', err);
       setError('An unexpected error occurred. Please try again.');

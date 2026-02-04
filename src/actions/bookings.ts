@@ -218,7 +218,11 @@ export async function createBooking(formData: FormData) {
       return { error: `Failed to reserve seats: ${lockError.message}` };
     }
 
+    // Revalidate all relevant paths to update seat availability across the app
     revalidatePath('/dashboard');
+    revalidatePath('/book/' + validated.data.scheduleId);
+    revalidatePath('/search');
+    
     console.log('[createBooking] Booking successful!');
     return { success: true, data: booking };
   } catch (error) {
@@ -313,8 +317,11 @@ export async function confirmBooking(bookingId: string, paymentId?: string) {
       }
     }
 
+    // Revalidate all relevant paths to update seat availability across the app
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/bookings');
+    revalidatePath('/book/' + bookingId); // This will trigger seat availability refresh for the specific schedule
+    revalidatePath('/search');
 
     return { success: true, message: 'Booking confirmed successfully' };
   } catch (error) {
@@ -382,8 +389,11 @@ export async function cancelBooking(bookingId: string) {
       })
       .eq('id', booking.schedule_id);
 
+    // Revalidate all relevant paths to update seat availability across the app
     revalidatePath('/dashboard');
     revalidatePath('/dashboard/bookings');
+    revalidatePath('/book/' + booking.schedule_id);
+    revalidatePath('/search');
 
     return { success: true };
   } catch (error) {
