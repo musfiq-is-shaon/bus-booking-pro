@@ -331,31 +331,32 @@ export default function BookingsPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-secondary-200">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-secondary-200">
                         <div>
                           <p className="text-sm text-secondary-500">Total Paid</p>
                           <p className="text-lg font-bold text-secondary-900">{formatCurrency(booking.total_price)}</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <button 
                             onClick={() => handleViewTicket(booking)}
-                            className="btn-secondary btn-sm flex items-center gap-2"
+                            className="btn-secondary btn-sm sm:btn-md flex items-center gap-1 sm:gap-2"
                           >
-                            <FileText className="w-4 h-4" />
-                            View Ticket
+                            <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden xs:inline">View</span>
                           </button>
                           <button 
                             onClick={() => handleDownloadTicket(booking)}
-                            className="btn-primary btn-sm flex items-center gap-2"
+                            className="btn-primary btn-sm sm:btn-md flex items-center gap-1 sm:gap-2"
                           >
-                            <Download className="w-4 h-4" />
-                            Download
+                            <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden xs:inline">Download</span>
                           </button>
                           <button 
                             onClick={() => handleCancelClick(booking)}
-                            className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="btn-ghost btn-sm sm:btn-md text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
-                            Cancel
+                            <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Cancel</span>
                           </button>
                         </div>
                       </div>

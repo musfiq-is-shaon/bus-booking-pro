@@ -18,8 +18,10 @@ import {
   EyeOff,
   Save,
   AlertTriangle,
-  X
+  X,
+  XCircle
 } from 'lucide-react';
+import { cancelBooking } from '@/actions/bookings';
 import { formatCurrency, formatDate, formatTime, getStatusColor } from '@/lib/utils';
 
 // Force dynamic rendering to avoid build-time Supabase errors
@@ -388,9 +390,26 @@ export default function UserDashboardPage() {
                           <p className="text-sm text-secondary-500">Total Paid</p>
                           <p className="text-lg font-bold text-secondary-900">{formatCurrency(booking.total_price)}</p>
                         </div>
-                        <Link href="/dashboard/bookings" className="btn-secondary btn-sm">
-                          View Ticket
-                        </Link>
+                        <div className="flex items-center gap-3">
+                          {booking.status === 'confirmed' && (
+                            <button
+                              onClick={async () => {
+                                if (confirm('Are you sure you want to cancel this booking?')) {
+                                  await cancelBooking(booking.id);
+                                  // Refresh the page to update the list
+                                  window.location.reload();
+                                }
+                              }}
+                              className="btn-ghost btn-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Cancel
+                            </button>
+                          )}
+                          <Link href="/dashboard/bookings" className="btn-secondary btn-sm">
+                            View Ticket
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   ))}
