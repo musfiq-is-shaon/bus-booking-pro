@@ -78,7 +78,10 @@ export default function UserDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
 
     const checkAuthAndFetchData = async () => {
       try {
@@ -120,13 +123,21 @@ export default function UserDashboardPage() {
 
         setBookings(bookingsData || []);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.warn('Auth check timed out or error:', error);
+        // Set empty bookings on error
+        setBookings([]);
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuthAndFetchData();
+    // Add timeout to prevent hanging
+    const timeoutId = setTimeout(() => {
+      console.warn('Auth check timeout - continuing anyway');
+      setLoading(false);
+    }, 5000);
+
+    checkAuthAndFetchData().finally(() => clearTimeout(timeoutId));
   }, [router, supabase]);
 
   const handleLogout = async () => {

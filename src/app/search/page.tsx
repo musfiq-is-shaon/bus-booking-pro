@@ -126,11 +126,27 @@ function SearchContent() {
   }, [searchParams, router]);
 
   const checkUser = async () => {
+    if (!supabase) {
+      setLoadingUser(false);
+      return;
+    }
+    
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      // Add a timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 5000)
+      );
+      
+      const { data: { user: currentUser } } = await Promise.race([
+        supabase.auth.getUser(),
+        timeoutPromise.then(() => ({ data: { user: null }, error: null }))
+      ]);
+      
       setUser(currentUser);
     } catch (error) {
-      console.error('Error checking user:', error);
+      console.warn('User check timed out or error:', error);
+      // Set user to null on error/timeout
+      setUser(null);
     } finally {
       setLoadingUser(false);
     }

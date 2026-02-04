@@ -85,6 +85,13 @@ export default function BookPage() {
 
   useEffect(() => {
     const fetchSchedule = async () => {
+      // Add timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        console.warn('Schedule fetch timeout - redirecting');
+        setLoading(false);
+        router.push('/search');
+      }, 10000);
+
       try {
         const { data, error } = await supabase
           .from('schedules')
@@ -127,9 +134,10 @@ export default function BookPage() {
         }
         setSeats(seatsArray);
       } catch (error) {
-        console.error('Error fetching schedule:', error);
+        console.warn('Schedule fetch error:', error);
         router.push('/search');
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     };
@@ -233,11 +241,17 @@ export default function BookPage() {
   }
 
   if (!schedule) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-secondary-600 mb-4">Loading schedule...</p>
+        </div>
+      </div>
+    );
   }
 
-  const totalPrice = selectedSeats.length * schedule.route.price;
-  const layout = BUS_SEAT_LAYOUTS[schedule.bus.bus_type] || BUS_SEAT_LAYOUTS.standard;
+  const totalPrice = selectedSeats.length * (schedule.route?.price || 0);
+  const layout = BUS_SEAT_LAYOUTS[schedule.bus?.bus_type || 'standard'] || BUS_SEAT_LAYOUTS.standard;
   const seatsPerRow = layout.seatsPerRow;
 
   return (
@@ -524,13 +538,13 @@ export default function BookPage() {
                         const ticketData: TicketData = {
                           bookingReference: bookingReference || '',
                           passengerName: passengers[0]?.name || 'Passenger',
-                          fromCity: schedule.route.from_city,
-                          toCity: schedule.route.to_city,
+                          fromCity: schedule.route?.from_city || 'Unknown',
+                          toCity: schedule.route?.to_city || 'Unknown',
                           departureDate: formatDate(schedule.departure_time),
                           departureTime: formatTime(schedule.departure_time),
                           arrivalTime: formatTime(schedule.arrival_time),
-                          busName: schedule.bus.bus_name,
-                          busType: schedule.bus.bus_type,
+                          busName: schedule.bus?.bus_name || 'Unknown Bus',
+                          busType: schedule.bus?.bus_type || 'standard',
                           seats: selectedSeats,
                           price: totalPrice,
                         };
