@@ -68,10 +68,12 @@ export async function middleware(request: NextRequest) {
 
     // Protected routes - check for dashboard group routes
     const isUserDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard/user');
+    const isBookingsRoute = request.nextUrl.pathname.startsWith('/dashboard/bookings');
+    const isDashboardRoute = request.nextUrl.pathname === '/dashboard';
     const isAuthRoute = request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup';
 
     // Redirect unauthenticated users from protected routes
-    if (!user && isUserDashboardRoute) {
+    if (!user && (isUserDashboardRoute || isBookingsRoute || isDashboardRoute)) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       return NextResponse.redirect(url);
@@ -81,6 +83,13 @@ export async function middleware(request: NextRequest) {
     if (user && isAuthRoute) {
       const url = request.nextUrl.clone();
       // Redirect to user dashboard by default
+      url.pathname = '/dashboard/user';
+      return NextResponse.redirect(url);
+    }
+
+    // Redirect authenticated users from base /dashboard to /dashboard/user
+    if (user && isDashboardRoute) {
+      const url = request.nextUrl.clone();
       url.pathname = '/dashboard/user';
       return NextResponse.redirect(url);
     }

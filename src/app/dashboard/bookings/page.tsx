@@ -175,20 +175,23 @@ export default function BookingsPage() {
       } else {
         setMessage({ type: 'success', text: 'Booking cancelled successfully!' });
         setShowCancelModal(false);
-        // Refresh bookings
-        const { data: bookingsData } = await supabase
-          .from('bookings')
-          .select(`
-            *,
-            schedule:schedules(
+        // Refresh bookings - get fresh auth user to get the UUID
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          const { data: bookingsData } = await supabase
+            .from('bookings')
+            .select(`
               *,
-              bus:buses(*),
-              route:routes(*)
-            )
-          `)
-          .eq('user_id', user?.email)
-          .order('created_at', { ascending: false });
-        setBookings(bookingsData || []);
+              schedule:schedules(
+                *,
+                bus:buses(*),
+                route:routes(*)
+              )
+            `)
+            .eq('user_id', authUser.id)
+            .order('created_at', { ascending: false });
+          setBookings(bookingsData || []);
+        }
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'An unexpected error occurred' });
