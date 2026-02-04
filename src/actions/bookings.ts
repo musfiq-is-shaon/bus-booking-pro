@@ -196,15 +196,48 @@ export async function createBooking(formData: FormData) {
       return { error: bookingError.message };
     }
 
-    // Lock seats temporarily and mark as booked (no pending state for instant booking)
-    console.log('[createBooking] Locking seats...');
+    // CRITICAL FIX: Use a simpler approach - update seats and recalculate available seats
+    console.log('[createBooking] Updating seats to booked status...');
     
-    // Use UPDATE instead of upsert because RLS policy only allows UPDATE (not INSERT) for non-admin users
-    // The seat_availability records are pre-created when schedules are created
+    // First, explicitly check if user can update seats
+    const { data: testUpdate, error: testError } = await supabase
+      .from('seat_availability')
+      .select('id')
+      .eq('schedule_id', validated.data.scheduleId)
+      .eq('seat_number', validated.data.seats[0])
+      .limit(1)
+      .single();
+
+    console.log('[createBooking] Can read seats:', !!testUpdate, 'Error:', testError);
+
+    if (testError) {
+      console.error('[createBooking] Cannot read seat_availability:', testError);
+      return { error: `Database access error: ${testError.message}` };
+    }
+
+    // Try to update ONE seat first as a test
+    const { error: singleUpdateError } = await supabase
+      .from('seat_availability')
+      .update({
+        status: 'booked',
+        booked_by: authUser.id,
+        booked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('schedule_id', validated.data.scheduleId)
+      .eq('seat_number', validated.data.seats[0]);
+
+    console.log('[createBooking] Single seat update result:', singleUpdateError ? `Error: ${singleUpdateError.message}` : 'Success');
+
+    if (singleUpdateError) {
+      return { error: `Failed to update seat: ${singleUpdateError.message}` };
+    }
+
+    // If single update worked, update all seats
     const { error: lockError } = await supabase
       .from('seat_availability')
       .update({
-        status: 'booked',  // Mark as booked directly (not reserved for 10 min)
+        status: 'booked',
         booked_by: authUser.id,
         booked_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -212,29 +245,44 @@ export async function createBooking(formData: FormData) {
       .eq('schedule_id', validated.data.scheduleId)
       .in('seat_number', validated.data.seats);
 
-    console.log('[createBooking] Seats locked, Error:', lockError);
+    console.log('[createBooking] All seats updated, Error:', lockError);
 
     if (lockError) {
+      console.error('[createBooking] Seat update failed:', lockError);
       return { error: `Failed to reserve seats: ${lockError.message}` };
     }
 
     // CRITICAL: Update the available_seats count in schedules
-    // This is what shows in the search results!
-    const { count: newAvailableCount } = await supabase
+    // Calculate: total seats - booked seats
+    console.log('[createBooking] Calculating new available seats count...');
+    
+    // Get total seats for this schedule
+    const { data: scheduleSeats } = await supabase
       .from('seat_availability')
-      .select('*', { count: 'exact', head: true })
-      .eq('schedule_id', validated.data.scheduleId)
-      .eq('status', 'available');
+      .select('status')
+      .eq('schedule_id', validated.data.scheduleId);
 
-    await supabase
+    const totalSeats = scheduleSeats?.length || 0;
+    const bookedCount = scheduleSeats?.filter(s => s.status === 'booked').length || 0;
+    const newAvailableCount = totalSeats - bookedCount;
+
+    console.log(`[createBooking] Total seats: ${totalSeats}, Booked: ${bookedCount}, Available: ${newAvailableCount}`);
+
+    // Update the schedule
+    const { error: updateScheduleError } = await supabase
       .from('schedules')
       .update({
-        available_seats: newAvailableCount || 0,
+        available_seats: newAvailableCount,
         updated_at: new Date().toISOString()
       })
       .eq('id', validated.data.scheduleId);
 
-    console.log('[createBooking] Available seats updated to:', newAvailableCount);
+    console.log('[createBooking] Schedule updated, Error:', updateScheduleError);
+
+    if (updateScheduleError) {
+      console.error('[createBooking] Schedule update failed:', updateScheduleError);
+      // Don't fail the booking for this - seats are already booked
+    }
 
     // Revalidate all relevant paths to update seat availability across the app
     revalidatePath('/dashboard');

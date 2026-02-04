@@ -410,6 +410,99 @@ function SearchContent() {
     }
   }, [fromCity, toCity, date, supabase]);
 
+  // Function to recalculate available seats from seat_availability table
+  const recalculateAvailableSeats = useCallback(async () => {
+    if (schedules.length === 0) return;
+
+    try {
+      // Get schedule IDs that need updating
+      const scheduleIds = schedules.map(s => s.id);
+
+      // Fetch latest seat availability for all schedules
+      const { data: latestSeats, error: seatsError } = await supabase
+        .from('seat_availability')
+        .select('schedule_id, status')
+        .in('schedule_id', scheduleIds);
+
+      if (seatsError) {
+        console.error('Error fetching latest seat data:', seatsError);
+        return;
+      }
+
+      // Calculate available seats per schedule
+      const availableCounts: Record<string, number> = {};
+      
+      // Initialize all schedules with 0
+      scheduleIds.forEach(id => {
+        availableCounts[id] = 0;
+      });
+
+      // Count available seats for each schedule
+      latestSeats?.forEach(seat => {
+        if (seat.status === 'available') {
+          availableCounts[seat.schedule_id] = (availableCounts[seat.schedule_id] || 0) + 1;
+        }
+      });
+
+      // Update schedules with recalculated counts
+      setSchedules(prevSchedules => 
+        prevSchedules.map(schedule => ({
+          ...schedule,
+          available_seats: availableCounts[schedule.id] ?? schedule.available_seats
+        }))
+      );
+
+      console.log('[Search] Recalculated available seats:', availableCounts);
+    } catch (error) {
+      console.error('Error recalculating available seats:', error);
+    }
+  }, [schedules, supabase]);
+
+  // Always recalculate available seats from seat_availability table when schedules change
+  // This ensures we always show accurate seat counts, not cached data
+  useEffect(() => {
+    if (hasSearched && schedules.length > 0) {
+      console.log('[Search] Schedules loaded, recalculating available seats from seat_availability table...');
+      recalculateAvailableSeats();
+    }
+  }, [hasSearched, schedules.length, recalculateAvailableSeats]);
+
+  // Refresh search results when page is focused (e.g., after booking)
+  useEffect(() => {
+    const handleFocus = async () => {
+      if (hasSearched && fromCity && toCity && date) {
+        console.log('[Search] Refreshing search results due to page focus...');
+        
+        // First, recalculate seats from seat_availability table for accuracy
+        await recalculateAvailableSeats();
+        
+        // Then refresh the search results
+        handleSearch();
+      }
+    };
+
+    // Listen for visibility change (tab switch)
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && hasSearched && fromCity && toCity && date) {
+        console.log('[Search] Refreshing search results due to tab focus...');
+        
+        // First, recalculate seats from seat_availability table for accuracy
+        await recalculateAvailableSeats();
+        
+        // Then refresh the search results
+        handleSearch();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [hasSearched, fromCity, toCity, date, handleSearch, recalculateAvailableSeats]);
+
   // Auto-search if params are provided - fixed with proper initialization check
   useEffect(() => {
     const shouldAutoSearch = fromCity && toCity && date && !loadingUser && !initializedRef.current;
@@ -424,6 +517,71 @@ function SearchContent() {
       return () => clearTimeout(timer);
     }
   }, [fromCity, toCity, date, loadingUser, handleSearch]);
+
+  // Real-time subscription for seat availability changes
+  useEffect(() => {
+    if (schedules.length === 0) return;
+
+    console.log('[Search] Setting up real-time subscription for seat availability...');
+
+    const scheduleIds = schedules.map(s => s.id);
+
+    // Subscribe to seat_availability changes
+    const subscription = supabase
+      .channel('seat-availability-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'seat_availability',
+          filter: `schedule_id=in.(${scheduleIds.join(',')})`
+        },
+        (payload) => {
+          console.log('[Search] Seat availability change detected:', payload);
+          // Recalculate available seats when any change occurs
+          recalculateAvailableSeats();
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Search] Subscription status:', status);
+      });
+
+    // Also subscribe to schedules changes (available_seats column updates)
+    const scheduleSubscription = supabase
+      .channel('schedule-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'schedules',
+          filter: `id=in.(${scheduleIds.join(',')})`
+        },
+        (payload) => {
+          console.log('[Search] Schedule update detected:', payload);
+          // Update the available_seats directly from the schedule
+          if (payload.new && payload.new.id) {
+            setSchedules(prevSchedules => 
+              prevSchedules.map(schedule => 
+                schedule.id === payload.new.id 
+                  ? { ...schedule, available_seats: payload.new.available_seats }
+                  : schedule
+              )
+            );
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Search] Schedule subscription status:', status);
+      });
+
+    return () => {
+      console.log('[Search] Cleaning up subscriptions...');
+      supabase.removeChannel(subscription);
+      supabase.removeChannel(scheduleSubscription);
+    };
+  }, [schedules.length, supabase, recalculateAvailableSeats]);
 
   const getBusTypeLabel = (type: string) => {
     const found = BUS_TYPES.find(b => b.value === type);

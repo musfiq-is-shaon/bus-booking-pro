@@ -585,7 +585,7 @@ export default function BookPage() {
                     <Link href="/dashboard/bookings" className="btn-secondary btn-md">
                       View My Bookings
                     </Link>
-                    <Link href="/search" className="btn-ghost btn-md">
+                    <Link href="/search" className="btn-ghost btn-md" onClick={() => router.refresh()}>
                       Book Another Trip
                     </Link>
                   </div>
