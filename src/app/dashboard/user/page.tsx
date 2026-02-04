@@ -48,7 +48,6 @@ interface Booking {
 
 export default function UserDashboardPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ 
     id: string;
@@ -70,7 +69,17 @@ export default function UserDashboardPage() {
   const [showPasswords, setShowPasswords] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Lazy-load Supabase client inside useEffect to avoid build-time errors
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
+
   useEffect(() => {
+    // Initialize Supabase client on the client side only
+    setSupabase(createClient());
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+
     const checkAuthAndFetchData = async () => {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -121,6 +130,7 @@ export default function UserDashboardPage() {
   }, [router, supabase]);
 
   const handleLogout = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     router.push('/');
     router.refresh();
@@ -132,6 +142,7 @@ export default function UserDashboardPage() {
   };
 
   const handleSaveProfile = async () => {
+    if (!supabase) return;
     setSaving(true);
     setMessage(null);
     
@@ -171,6 +182,7 @@ export default function UserDashboardPage() {
   };
 
   const handleChangePassword = async () => {
+    if (!supabase) return;
     if (newPassword !== confirmPassword) {
       setMessage({ type: 'error', text: 'New passwords do not match' });
       return;

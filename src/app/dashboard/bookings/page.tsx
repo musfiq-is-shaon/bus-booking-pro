@@ -56,7 +56,6 @@ interface Booking {
 
 export default function BookingsPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ full_name: string | null; email: string } | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -67,7 +66,17 @@ export default function BookingsPage() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Lazy-load Supabase client inside useEffect to avoid build-time errors
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
+
   useEffect(() => {
+    // Initialize Supabase client on the client side only
+    setSupabase(createClient());
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+
     const checkAuthAndFetchData = async () => {
       try {
         const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -108,6 +117,7 @@ export default function BookingsPage() {
   }, [router, supabase]);
 
   const handleLogout = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     router.push('/');
     router.refresh();
@@ -141,7 +151,7 @@ export default function BookingsPage() {
   };
 
   const handleConfirmCancel = async () => {
-    if (!selectedBooking) return;
+    if (!selectedBooking || !supabase) return;
     
     setCancelLoading(true);
     setMessage(null);
