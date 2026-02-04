@@ -22,6 +22,9 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate, formatTime, getStatusColor } from '@/lib/utils';
 
+// Force dynamic rendering to avoid build-time Supabase errors
+export const dynamic = 'force-dynamic';
+
 interface Booking {
   id: string;
   booking_reference: string;

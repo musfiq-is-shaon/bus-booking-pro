@@ -23,6 +23,9 @@ import {
 import { formatCurrency, formatDate, formatTime, getStatusColor, downloadTicketPDF, type TicketData } from '@/lib/utils';
 import { cancelBooking } from '@/actions/bookings';
 
+// Force dynamic rendering to avoid build-time Supabase errors
+export const dynamic = 'force-dynamic';
+
 interface Booking {
   id: string;
   booking_reference: string;

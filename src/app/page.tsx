@@ -26,6 +26,9 @@ import { formatCurrency, CITIES, BUS_TYPES } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/lib/theme-provider';
 
+// Force dynamic rendering to avoid build-time Supabase errors
+export const dynamic = 'force-dynamic';
+
 export default function HomePage() {
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
