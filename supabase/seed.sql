@@ -293,7 +293,7 @@ TRUNCATE TABLE seat_availability CASCADE;
 TRUNCATE TABLE schedules CASCADE;
 
 -- =====================================================
--- Create a temp table to hold all unique (route, time) combinations
+-- Create unique_assignments temp table for route assignments
 -- =====================================================
 CREATE TEMP TABLE unique_assignments (
     route_from TEXT,
@@ -305,773 +305,795 @@ CREATE TEMP TABLE unique_assignments (
     arrival_time TIMESTAMP WITH TIME ZONE
 );
 
+-- =====================================================
+-- Generate base route assignments (single day)
+-- =====================================================
+CREATE TEMP TABLE base_assignments (
+    route_from TEXT,
+    route_to TEXT,
+    hours_offset INT
+);
+
 -- Insert all route assignments with MULTIPLE times per route
--- Each route now has 5-6 departure times throughout the day
-INSERT INTO unique_assignments (route_from, route_to, hours_offset, days_offset)
+-- Each route now has 20 departure times throughout the day (4 AM - 11 PM)
+INSERT INTO base_assignments (route_from, route_to, hours_offset)
 -- =====================================================
 -- ADDITIONAL DHAKA HIGH-FREQUENCY ROUTES
 -- Extra buses and schedules for popular Dhaka routes
 -- =====================================================
 
 -- Dhaka -> Chittagong (12 times per day - very high frequency)
-SELECT 'Dhaka', 'Chittagong', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Chittagong', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 4 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 5 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 6 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 7 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 8 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 9 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 10 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 11 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 12 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 13 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 14 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 15 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 16 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 17 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 18 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 19 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 20 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 21 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 22 UNION ALL
+SELECT 'Dhaka', 'Chittagong', 23 UNION ALL
 -- Dhaka -> Coxs Bazar (12 times per day - very high frequency)
-SELECT 'Dhaka', 'Coxs Bazar', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Coxs Bazar', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 4 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 5 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 6 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 7 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 8 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 9 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 10 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 11 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 12 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 13 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 14 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 15 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 16 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 17 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 18 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 19 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 20 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 21 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 22 UNION ALL
+SELECT 'Dhaka', 'Coxs Bazar', 23 UNION ALL
 -- Dhaka -> Barisal (10 times per day - high frequency)
-SELECT 'Dhaka', 'Barisal', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Barisal', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Barisal', 4 UNION ALL
+SELECT 'Dhaka', 'Barisal', 5 UNION ALL
+SELECT 'Dhaka', 'Barisal', 6 UNION ALL
+SELECT 'Dhaka', 'Barisal', 7 UNION ALL
+SELECT 'Dhaka', 'Barisal', 8 UNION ALL
+SELECT 'Dhaka', 'Barisal', 9 UNION ALL
+SELECT 'Dhaka', 'Barisal', 10 UNION ALL
+SELECT 'Dhaka', 'Barisal', 11 UNION ALL
+SELECT 'Dhaka', 'Barisal', 12 UNION ALL
+SELECT 'Dhaka', 'Barisal', 13 UNION ALL
+SELECT 'Dhaka', 'Barisal', 14 UNION ALL
+SELECT 'Dhaka', 'Barisal', 15 UNION ALL
+SELECT 'Dhaka', 'Barisal', 16 UNION ALL
+SELECT 'Dhaka', 'Barisal', 17 UNION ALL
+SELECT 'Dhaka', 'Barisal', 18 UNION ALL
+SELECT 'Dhaka', 'Barisal', 19 UNION ALL
+SELECT 'Dhaka', 'Barisal', 20 UNION ALL
+SELECT 'Dhaka', 'Barisal', 21 UNION ALL
+SELECT 'Dhaka', 'Barisal', 22 UNION ALL
+SELECT 'Dhaka', 'Barisal', 23 UNION ALL
 
 -- Dhaka -> Sylhet (10 times per day - high frequency)
-SELECT 'Dhaka', 'Sylhet', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Sylhet', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 4 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 5 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 6 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 7 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 8 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 9 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 10 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 11 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 12 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 13 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 14 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 15 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 16 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 17 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 18 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 19 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 20 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 21 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 22 UNION ALL
+SELECT 'Dhaka', 'Sylhet', 23 UNION ALL
 -- Dhaka -> Rajshahi (10 times per day - high frequency)
-SELECT 'Dhaka', 'Rajshahi', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Rajshahi', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 4 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 5 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 6 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 7 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 8 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 9 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 10 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 11 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 12 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 13 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 14 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 15 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 16 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 17 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 18 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 19 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 20 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 21 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 22 UNION ALL
+SELECT 'Dhaka', 'Rajshahi', 23 UNION ALL
 -- Dhaka -> Jessore (10 times per day - high frequency)
-SELECT 'Dhaka', 'Jessore', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Jessore', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Jessore', 4 UNION ALL
+SELECT 'Dhaka', 'Jessore', 5 UNION ALL
+SELECT 'Dhaka', 'Jessore', 6 UNION ALL
+SELECT 'Dhaka', 'Jessore', 7 UNION ALL
+SELECT 'Dhaka', 'Jessore', 8 UNION ALL
+SELECT 'Dhaka', 'Jessore', 9 UNION ALL
+SELECT 'Dhaka', 'Jessore', 10 UNION ALL
+SELECT 'Dhaka', 'Jessore', 11 UNION ALL
+SELECT 'Dhaka', 'Jessore', 12 UNION ALL
+SELECT 'Dhaka', 'Jessore', 13 UNION ALL
+SELECT 'Dhaka', 'Jessore', 14 UNION ALL
+SELECT 'Dhaka', 'Jessore', 15 UNION ALL
+SELECT 'Dhaka', 'Jessore', 16 UNION ALL
+SELECT 'Dhaka', 'Jessore', 17 UNION ALL
+SELECT 'Dhaka', 'Jessore', 18 UNION ALL
+SELECT 'Dhaka', 'Jessore', 19 UNION ALL
+SELECT 'Dhaka', 'Jessore', 20 UNION ALL
+SELECT 'Dhaka', 'Jessore', 21 UNION ALL
+SELECT 'Dhaka', 'Jessore', 22 UNION ALL
+SELECT 'Dhaka', 'Jessore', 23 UNION ALL
 -- Dhaka -> Khulna (10 times per day - high frequency)
-SELECT 'Dhaka', 'Khulna', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Khulna', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Khulna', 4 UNION ALL
+SELECT 'Dhaka', 'Khulna', 5 UNION ALL
+SELECT 'Dhaka', 'Khulna', 6 UNION ALL
+SELECT 'Dhaka', 'Khulna', 7 UNION ALL
+SELECT 'Dhaka', 'Khulna', 8 UNION ALL
+SELECT 'Dhaka', 'Khulna', 9 UNION ALL
+SELECT 'Dhaka', 'Khulna', 10 UNION ALL
+SELECT 'Dhaka', 'Khulna', 11 UNION ALL
+SELECT 'Dhaka', 'Khulna', 12 UNION ALL
+SELECT 'Dhaka', 'Khulna', 13 UNION ALL
+SELECT 'Dhaka', 'Khulna', 14 UNION ALL
+SELECT 'Dhaka', 'Khulna', 15 UNION ALL
+SELECT 'Dhaka', 'Khulna', 16 UNION ALL
+SELECT 'Dhaka', 'Khulna', 17 UNION ALL
+SELECT 'Dhaka', 'Khulna', 18 UNION ALL
+SELECT 'Dhaka', 'Khulna', 19 UNION ALL
+SELECT 'Dhaka', 'Khulna', 20 UNION ALL
+SELECT 'Dhaka', 'Khulna', 21 UNION ALL
+SELECT 'Dhaka', 'Khulna', 22 UNION ALL
+SELECT 'Dhaka', 'Khulna', 23 UNION ALL
 -- Dhaka -> Rangpur (10 times per day - high frequency)
-SELECT 'Dhaka', 'Rangpur', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Rangpur', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 4 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 5 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 6 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 7 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 8 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 9 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 10 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 11 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 12 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 13 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 14 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 15 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 16 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 17 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 18 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 19 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 20 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 21 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 22 UNION ALL
+SELECT 'Dhaka', 'Rangpur', 23 UNION ALL
 -- Dhaka -> Dinajpur (10 times per day - high frequency)
-SELECT 'Dhaka', 'Dinajpur', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Dinajpur', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 4 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 5 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 6 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 7 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 8 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 9 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 10 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 11 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 12 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 13 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 14 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 15 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 16 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 17 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 18 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 19 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 20 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 21 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 22 UNION ALL
+SELECT 'Dhaka', 'Dinajpur', 23 UNION ALL
 -- Dhaka -> Comilla (10 times per day - high frequency)
-SELECT 'Dhaka', 'Comilla', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Comilla', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Comilla', 4 UNION ALL
+SELECT 'Dhaka', 'Comilla', 5 UNION ALL
+SELECT 'Dhaka', 'Comilla', 6 UNION ALL
+SELECT 'Dhaka', 'Comilla', 7 UNION ALL
+SELECT 'Dhaka', 'Comilla', 8 UNION ALL
+SELECT 'Dhaka', 'Comilla', 9 UNION ALL
+SELECT 'Dhaka', 'Comilla', 10 UNION ALL
+SELECT 'Dhaka', 'Comilla', 11 UNION ALL
+SELECT 'Dhaka', 'Comilla', 12 UNION ALL
+SELECT 'Dhaka', 'Comilla', 13 UNION ALL
+SELECT 'Dhaka', 'Comilla', 14 UNION ALL
+SELECT 'Dhaka', 'Comilla', 15 UNION ALL
+SELECT 'Dhaka', 'Comilla', 16 UNION ALL
+SELECT 'Dhaka', 'Comilla', 17 UNION ALL
+SELECT 'Dhaka', 'Comilla', 18 UNION ALL
+SELECT 'Dhaka', 'Comilla', 19 UNION ALL
+SELECT 'Dhaka', 'Comilla', 20 UNION ALL
+SELECT 'Dhaka', 'Comilla', 21 UNION ALL
+SELECT 'Dhaka', 'Comilla', 22 UNION ALL
+SELECT 'Dhaka', 'Comilla', 23 UNION ALL
 -- Dhaka -> Bogura (10 times per day - high frequency)
-SELECT 'Dhaka', 'Bogura', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Bogura', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Bogura', 4 UNION ALL
+SELECT 'Dhaka', 'Bogura', 5 UNION ALL
+SELECT 'Dhaka', 'Bogura', 6 UNION ALL
+SELECT 'Dhaka', 'Bogura', 7 UNION ALL
+SELECT 'Dhaka', 'Bogura', 8 UNION ALL
+SELECT 'Dhaka', 'Bogura', 9 UNION ALL
+SELECT 'Dhaka', 'Bogura', 10 UNION ALL
+SELECT 'Dhaka', 'Bogura', 11 UNION ALL
+SELECT 'Dhaka', 'Bogura', 12 UNION ALL
+SELECT 'Dhaka', 'Bogura', 13 UNION ALL
+SELECT 'Dhaka', 'Bogura', 14 UNION ALL
+SELECT 'Dhaka', 'Bogura', 15 UNION ALL
+SELECT 'Dhaka', 'Bogura', 16 UNION ALL
+SELECT 'Dhaka', 'Bogura', 17 UNION ALL
+SELECT 'Dhaka', 'Bogura', 18 UNION ALL
+SELECT 'Dhaka', 'Bogura', 19 UNION ALL
+SELECT 'Dhaka', 'Bogura', 20 UNION ALL
+SELECT 'Dhaka', 'Bogura', 21 UNION ALL
+SELECT 'Dhaka', 'Bogura', 22 UNION ALL
+SELECT 'Dhaka', 'Bogura', 23 UNION ALL
 -- Dhaka -> Pabna (10 times per day - high frequency)
-SELECT 'Dhaka', 'Pabna', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Pabna', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Pabna', 4 UNION ALL
+SELECT 'Dhaka', 'Pabna', 5 UNION ALL
+SELECT 'Dhaka', 'Pabna', 6 UNION ALL
+SELECT 'Dhaka', 'Pabna', 7 UNION ALL
+SELECT 'Dhaka', 'Pabna', 8 UNION ALL
+SELECT 'Dhaka', 'Pabna', 9 UNION ALL
+SELECT 'Dhaka', 'Pabna', 10 UNION ALL
+SELECT 'Dhaka', 'Pabna', 11 UNION ALL
+SELECT 'Dhaka', 'Pabna', 12 UNION ALL
+SELECT 'Dhaka', 'Pabna', 13 UNION ALL
+SELECT 'Dhaka', 'Pabna', 14 UNION ALL
+SELECT 'Dhaka', 'Pabna', 15 UNION ALL
+SELECT 'Dhaka', 'Pabna', 16 UNION ALL
+SELECT 'Dhaka', 'Pabna', 17 UNION ALL
+SELECT 'Dhaka', 'Pabna', 18 UNION ALL
+SELECT 'Dhaka', 'Pabna', 19 UNION ALL
+SELECT 'Dhaka', 'Pabna', 20 UNION ALL
+SELECT 'Dhaka', 'Pabna', 21 UNION ALL
+SELECT 'Dhaka', 'Pabna', 22 UNION ALL
+SELECT 'Dhaka', 'Pabna', 23 UNION ALL
 
 -- Dhaka -> Noakhali (10 times per day - high frequency)
-SELECT 'Dhaka', 'Noakhali', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Noakhali', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 4 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 5 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 6 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 7 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 8 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 9 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 10 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 11 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 12 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 13 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 14 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 15 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 16 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 17 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 18 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 19 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 20 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 21 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 22 UNION ALL
+SELECT 'Dhaka', 'Noakhali', 23 UNION ALL
 
 -- Dhaka -> Mymensingh (10 times per day - high frequency)
-SELECT 'Dhaka', 'Mymensingh', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Mymensingh', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 4 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 5 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 6 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 7 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 8 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 9 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 10 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 11 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 12 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 13 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 14 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 15 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 16 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 17 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 18 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 19 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 20 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 21 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 22 UNION ALL
+SELECT 'Dhaka', 'Mymensingh', 23 UNION ALL
 
 -- Dhaka -> Tangail (10 times per day - high frequency)
-SELECT 'Dhaka', 'Tangail', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Tangail', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Tangail', 4 UNION ALL
+SELECT 'Dhaka', 'Tangail', 5 UNION ALL
+SELECT 'Dhaka', 'Tangail', 6 UNION ALL
+SELECT 'Dhaka', 'Tangail', 7 UNION ALL
+SELECT 'Dhaka', 'Tangail', 8 UNION ALL
+SELECT 'Dhaka', 'Tangail', 9 UNION ALL
+SELECT 'Dhaka', 'Tangail', 10 UNION ALL
+SELECT 'Dhaka', 'Tangail', 11 UNION ALL
+SELECT 'Dhaka', 'Tangail', 12 UNION ALL
+SELECT 'Dhaka', 'Tangail', 13 UNION ALL
+SELECT 'Dhaka', 'Tangail', 14 UNION ALL
+SELECT 'Dhaka', 'Tangail', 15 UNION ALL
+SELECT 'Dhaka', 'Tangail', 16 UNION ALL
+SELECT 'Dhaka', 'Tangail', 17 UNION ALL
+SELECT 'Dhaka', 'Tangail', 18 UNION ALL
+SELECT 'Dhaka', 'Tangail', 19 UNION ALL
+SELECT 'Dhaka', 'Tangail', 20 UNION ALL
+SELECT 'Dhaka', 'Tangail', 21 UNION ALL
+SELECT 'Dhaka', 'Tangail', 22 UNION ALL
+SELECT 'Dhaka', 'Tangail', 23 UNION ALL
 
 -- Dhaka -> Feni (10 times per day - high frequency)
-SELECT 'Dhaka', 'Feni', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Feni', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Feni', 4 UNION ALL
+SELECT 'Dhaka', 'Feni', 5 UNION ALL
+SELECT 'Dhaka', 'Feni', 6 UNION ALL
+SELECT 'Dhaka', 'Feni', 7 UNION ALL
+SELECT 'Dhaka', 'Feni', 8 UNION ALL
+SELECT 'Dhaka', 'Feni', 9 UNION ALL
+SELECT 'Dhaka', 'Feni', 10 UNION ALL
+SELECT 'Dhaka', 'Feni', 11 UNION ALL
+SELECT 'Dhaka', 'Feni', 12 UNION ALL
+SELECT 'Dhaka', 'Feni', 13 UNION ALL
+SELECT 'Dhaka', 'Feni', 14 UNION ALL
+SELECT 'Dhaka', 'Feni', 15 UNION ALL
+SELECT 'Dhaka', 'Feni', 16 UNION ALL
+SELECT 'Dhaka', 'Feni', 17 UNION ALL
+SELECT 'Dhaka', 'Feni', 18 UNION ALL
+SELECT 'Dhaka', 'Feni', 19 UNION ALL
+SELECT 'Dhaka', 'Feni', 20 UNION ALL
+SELECT 'Dhaka', 'Feni', 21 UNION ALL
+SELECT 'Dhaka', 'Feni', 22 UNION ALL
+SELECT 'Dhaka', 'Feni', 23 UNION ALL
 
 -- Dhaka -> Narayanganj (12 times per day - very high frequency)
-SELECT 'Dhaka', 'Narayanganj', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Narayanganj', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 4 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 5 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 6 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 7 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 8 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 9 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 10 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 11 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 12 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 13 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 14 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 15 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 16 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 17 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 18 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 19 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 20 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 21 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 22 UNION ALL
+SELECT 'Dhaka', 'Narayanganj', 23 UNION ALL
 
 -- Dhaka -> Gazipur (12 times per day - very high frequency)
-SELECT 'Dhaka', 'Gazipur', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Gazipur', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 4 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 5 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 6 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 7 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 8 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 9 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 10 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 11 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 12 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 13 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 14 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 15 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 16 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 17 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 18 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 19 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 20 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 21 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 22 UNION ALL
+SELECT 'Dhaka', 'Gazipur', 23 UNION ALL
 
 -- Dhaka -> Savar (12 times per day - very high frequency)
-SELECT 'Dhaka', 'Savar', 4, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 5, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 6, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 7, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 8, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 9, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 10, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 11, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 12, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 13, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 14, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 15, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 16, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 17, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 18, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 19, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 20, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 21, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 22, 0 UNION ALL
-SELECT 'Dhaka', 'Savar', 23, 0 UNION ALL
+SELECT 'Dhaka', 'Savar', 4 UNION ALL
+SELECT 'Dhaka', 'Savar', 5 UNION ALL
+SELECT 'Dhaka', 'Savar', 6 UNION ALL
+SELECT 'Dhaka', 'Savar', 7 UNION ALL
+SELECT 'Dhaka', 'Savar', 8 UNION ALL
+SELECT 'Dhaka', 'Savar', 9 UNION ALL
+SELECT 'Dhaka', 'Savar', 10 UNION ALL
+SELECT 'Dhaka', 'Savar', 11 UNION ALL
+SELECT 'Dhaka', 'Savar', 12 UNION ALL
+SELECT 'Dhaka', 'Savar', 13 UNION ALL
+SELECT 'Dhaka', 'Savar', 14 UNION ALL
+SELECT 'Dhaka', 'Savar', 15 UNION ALL
+SELECT 'Dhaka', 'Savar', 16 UNION ALL
+SELECT 'Dhaka', 'Savar', 17 UNION ALL
+SELECT 'Dhaka', 'Savar', 18 UNION ALL
+SELECT 'Dhaka', 'Savar', 19 UNION ALL
+SELECT 'Dhaka', 'Savar', 20 UNION ALL
+SELECT 'Dhaka', 'Savar', 21 UNION ALL
+SELECT 'Dhaka', 'Savar', 22 UNION ALL
+SELECT 'Dhaka', 'Savar', 23 UNION ALL
 -- Reverse Routes (next day returns with 5-6 times each)
-SELECT 'Chittagong', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Chittagong', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Chittagong', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Chittagong', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Chittagong', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Chittagong', 'Dhaka', 21, 1 UNION ALL
-SELECT 'Chittagong', 'Dhaka', 23, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Sylhet', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Sylhet', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Sylhet', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Sylhet', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Sylhet', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Sylhet', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Rajshahi', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Rajshahi', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Rajshahi', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Rajshahi', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Rajshahi', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Rajshahi', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Jessore', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Jessore', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Jessore', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Jessore', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Jessore', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Jessore', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Khulna', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Khulna', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Khulna', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Khulna', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Khulna', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Khulna', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Rangpur', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Rangpur', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Rangpur', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Rangpur', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Rangpur', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Rangpur', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Dinajpur', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Dinajpur', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Dinajpur', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Dinajpur', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Dinajpur', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Dinajpur', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Comilla', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Comilla', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Comilla', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Comilla', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Comilla', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Comilla', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Bogura', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Bogura', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Bogura', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Bogura', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Bogura', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Bogura', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Pabna', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Pabna', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Pabna', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Pabna', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Pabna', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Pabna', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Noakhali', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Noakhali', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Noakhali', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Noakhali', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Noakhali', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Noakhali', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Mymensingh', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Mymensingh', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Mymensingh', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Mymensingh', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Mymensingh', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Mymensingh', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Tangail', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Tangail', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Tangail', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Tangail', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Tangail', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Tangail', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Feni', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Feni', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Feni', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Feni', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Feni', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Feni', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Narayanganj', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Narayanganj', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Narayanganj', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Narayanganj', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Narayanganj', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Narayanganj', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Gazipur', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Gazipur', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Gazipur', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Gazipur', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Gazipur', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Gazipur', 'Dhaka', 20, 1 UNION ALL
-SELECT 'Savar', 'Dhaka', 5, 1 UNION ALL
-SELECT 'Savar', 'Dhaka', 8, 1 UNION ALL
-SELECT 'Savar', 'Dhaka', 11, 1 UNION ALL
-SELECT 'Savar', 'Dhaka', 14, 1 UNION ALL
-SELECT 'Savar', 'Dhaka', 17, 1 UNION ALL
-SELECT 'Savar', 'Dhaka', 20, 1 UNION ALL
+SELECT 'Chittagong', 'Dhaka', 5 UNION ALL
+SELECT 'Chittagong', 'Dhaka', 8 UNION ALL
+SELECT 'Chittagong', 'Dhaka', 11 UNION ALL
+SELECT 'Chittagong', 'Dhaka', 14 UNION ALL
+SELECT 'Chittagong', 'Dhaka', 17 UNION ALL
+SELECT 'Chittagong', 'Dhaka', 21 UNION ALL
+SELECT 'Chittagong', 'Dhaka', 23 UNION ALL
+SELECT 'Coxs Bazar', 'Dhaka', 5 UNION ALL
+SELECT 'Coxs Bazar', 'Dhaka', 8 UNION ALL
+SELECT 'Coxs Bazar', 'Dhaka', 11 UNION ALL
+SELECT 'Coxs Bazar', 'Dhaka', 14 UNION ALL
+SELECT 'Coxs Bazar', 'Dhaka', 17 UNION ALL
+SELECT 'Coxs Bazar', 'Dhaka', 20 UNION ALL
+SELECT 'Sylhet', 'Dhaka', 5 UNION ALL
+SELECT 'Sylhet', 'Dhaka', 8 UNION ALL
+SELECT 'Sylhet', 'Dhaka', 11 UNION ALL
+SELECT 'Sylhet', 'Dhaka', 14 UNION ALL
+SELECT 'Sylhet', 'Dhaka', 17 UNION ALL
+SELECT 'Sylhet', 'Dhaka', 20 UNION ALL
+SELECT 'Rajshahi', 'Dhaka', 5 UNION ALL
+SELECT 'Rajshahi', 'Dhaka', 8 UNION ALL
+SELECT 'Rajshahi', 'Dhaka', 11 UNION ALL
+SELECT 'Rajshahi', 'Dhaka', 14 UNION ALL
+SELECT 'Rajshahi', 'Dhaka', 17 UNION ALL
+SELECT 'Rajshahi', 'Dhaka', 20 UNION ALL
+SELECT 'Jessore', 'Dhaka', 5 UNION ALL
+SELECT 'Jessore', 'Dhaka', 8 UNION ALL
+SELECT 'Jessore', 'Dhaka', 11 UNION ALL
+SELECT 'Jessore', 'Dhaka', 14 UNION ALL
+SELECT 'Jessore', 'Dhaka', 17 UNION ALL
+SELECT 'Jessore', 'Dhaka', 20 UNION ALL
+SELECT 'Khulna', 'Dhaka', 5 UNION ALL
+SELECT 'Khulna', 'Dhaka', 8 UNION ALL
+SELECT 'Khulna', 'Dhaka', 11 UNION ALL
+SELECT 'Khulna', 'Dhaka', 14 UNION ALL
+SELECT 'Khulna', 'Dhaka', 17 UNION ALL
+SELECT 'Khulna', 'Dhaka', 20 UNION ALL
+SELECT 'Rangpur', 'Dhaka', 5 UNION ALL
+SELECT 'Rangpur', 'Dhaka', 8 UNION ALL
+SELECT 'Rangpur', 'Dhaka', 11 UNION ALL
+SELECT 'Rangpur', 'Dhaka', 14 UNION ALL
+SELECT 'Rangpur', 'Dhaka', 17 UNION ALL
+SELECT 'Rangpur', 'Dhaka', 20 UNION ALL
+SELECT 'Dinajpur', 'Dhaka', 5 UNION ALL
+SELECT 'Dinajpur', 'Dhaka', 8 UNION ALL
+SELECT 'Dinajpur', 'Dhaka', 11 UNION ALL
+SELECT 'Dinajpur', 'Dhaka', 14 UNION ALL
+SELECT 'Dinajpur', 'Dhaka', 17 UNION ALL
+SELECT 'Dinajpur', 'Dhaka', 20 UNION ALL
+SELECT 'Comilla', 'Dhaka', 5 UNION ALL
+SELECT 'Comilla', 'Dhaka', 8 UNION ALL
+SELECT 'Comilla', 'Dhaka', 11 UNION ALL
+SELECT 'Comilla', 'Dhaka', 14 UNION ALL
+SELECT 'Comilla', 'Dhaka', 17 UNION ALL
+SELECT 'Comilla', 'Dhaka', 20 UNION ALL
+SELECT 'Bogura', 'Dhaka', 5 UNION ALL
+SELECT 'Bogura', 'Dhaka', 8 UNION ALL
+SELECT 'Bogura', 'Dhaka', 11 UNION ALL
+SELECT 'Bogura', 'Dhaka', 14 UNION ALL
+SELECT 'Bogura', 'Dhaka', 17 UNION ALL
+SELECT 'Bogura', 'Dhaka', 20 UNION ALL
+SELECT 'Pabna', 'Dhaka', 5 UNION ALL
+SELECT 'Pabna', 'Dhaka', 8 UNION ALL
+SELECT 'Pabna', 'Dhaka', 11 UNION ALL
+SELECT 'Pabna', 'Dhaka', 14 UNION ALL
+SELECT 'Pabna', 'Dhaka', 17 UNION ALL
+SELECT 'Pabna', 'Dhaka', 20 UNION ALL
+SELECT 'Noakhali', 'Dhaka', 5 UNION ALL
+SELECT 'Noakhali', 'Dhaka', 8 UNION ALL
+SELECT 'Noakhali', 'Dhaka', 11 UNION ALL
+SELECT 'Noakhali', 'Dhaka', 14 UNION ALL
+SELECT 'Noakhali', 'Dhaka', 17 UNION ALL
+SELECT 'Noakhali', 'Dhaka', 20 UNION ALL
+SELECT 'Mymensingh', 'Dhaka', 5 UNION ALL
+SELECT 'Mymensingh', 'Dhaka', 8 UNION ALL
+SELECT 'Mymensingh', 'Dhaka', 11 UNION ALL
+SELECT 'Mymensingh', 'Dhaka', 14 UNION ALL
+SELECT 'Mymensingh', 'Dhaka', 17 UNION ALL
+SELECT 'Mymensingh', 'Dhaka', 20 UNION ALL
+SELECT 'Tangail', 'Dhaka', 5 UNION ALL
+SELECT 'Tangail', 'Dhaka', 8 UNION ALL
+SELECT 'Tangail', 'Dhaka', 11 UNION ALL
+SELECT 'Tangail', 'Dhaka', 14 UNION ALL
+SELECT 'Tangail', 'Dhaka', 17 UNION ALL
+SELECT 'Tangail', 'Dhaka', 20 UNION ALL
+SELECT 'Feni', 'Dhaka', 5 UNION ALL
+SELECT 'Feni', 'Dhaka', 8 UNION ALL
+SELECT 'Feni', 'Dhaka', 11 UNION ALL
+SELECT 'Feni', 'Dhaka', 14 UNION ALL
+SELECT 'Feni', 'Dhaka', 17 UNION ALL
+SELECT 'Feni', 'Dhaka', 20 UNION ALL
+SELECT 'Narayanganj', 'Dhaka', 5 UNION ALL
+SELECT 'Narayanganj', 'Dhaka', 8 UNION ALL
+SELECT 'Narayanganj', 'Dhaka', 11 UNION ALL
+SELECT 'Narayanganj', 'Dhaka', 14 UNION ALL
+SELECT 'Narayanganj', 'Dhaka', 17 UNION ALL
+SELECT 'Narayanganj', 'Dhaka', 20 UNION ALL
+SELECT 'Gazipur', 'Dhaka', 5 UNION ALL
+SELECT 'Gazipur', 'Dhaka', 8 UNION ALL
+SELECT 'Gazipur', 'Dhaka', 11 UNION ALL
+SELECT 'Gazipur', 'Dhaka', 14 UNION ALL
+SELECT 'Gazipur', 'Dhaka', 17 UNION ALL
+SELECT 'Gazipur', 'Dhaka', 20 UNION ALL
+SELECT 'Savar', 'Dhaka', 5 UNION ALL
+SELECT 'Savar', 'Dhaka', 8 UNION ALL
+SELECT 'Savar', 'Dhaka', 11 UNION ALL
+SELECT 'Savar', 'Dhaka', 14 UNION ALL
+SELECT 'Savar', 'Dhaka', 17 UNION ALL
+SELECT 'Savar', 'Dhaka', 20 UNION ALL
 -- Near Dhaka Routes (5-6 times each for maximum variety)
-SELECT 'Narayanganj', 'Coxs Bazar', 5, 0 UNION ALL
-SELECT 'Narayanganj', 'Coxs Bazar', 8, 0 UNION ALL
-SELECT 'Narayanganj', 'Coxs Bazar', 11, 0 UNION ALL
-SELECT 'Narayanganj', 'Coxs Bazar', 14, 0 UNION ALL
-SELECT 'Narayanganj', 'Coxs Bazar', 17, 0 UNION ALL
-SELECT 'Narayanganj', 'Coxs Bazar', 20, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Narayanganj', 5, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Narayanganj', 8, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Narayanganj', 11, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Narayanganj', 14, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Narayanganj', 17, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Narayanganj', 20, 1 UNION ALL
-SELECT 'Gazipur', 'Tangail', 5, 0 UNION ALL
-SELECT 'Gazipur', 'Tangail', 8, 0 UNION ALL
-SELECT 'Gazipur', 'Tangail', 11, 0 UNION ALL
-SELECT 'Gazipur', 'Tangail', 14, 0 UNION ALL
-SELECT 'Gazipur', 'Tangail', 17, 0 UNION ALL
-SELECT 'Gazipur', 'Tangail', 20, 0 UNION ALL
-SELECT 'Tangail', 'Gazipur', 5, 1 UNION ALL
-SELECT 'Tangail', 'Gazipur', 8, 1 UNION ALL
-SELECT 'Tangail', 'Gazipur', 11, 1 UNION ALL
-SELECT 'Tangail', 'Gazipur', 14, 1 UNION ALL
-SELECT 'Tangail', 'Gazipur', 17, 1 UNION ALL
-SELECT 'Tangail', 'Gazipur', 20, 1 UNION ALL
-SELECT 'Mymensingh', 'Tangail', 5, 0 UNION ALL
-SELECT 'Mymensingh', 'Tangail', 8, 0 UNION ALL
-SELECT 'Mymensingh', 'Tangail', 11, 0 UNION ALL
-SELECT 'Mymensingh', 'Tangail', 14, 0 UNION ALL
-SELECT 'Mymensingh', 'Tangail', 17, 0 UNION ALL
-SELECT 'Mymensingh', 'Tangail', 20, 0 UNION ALL
-SELECT 'Tangail', 'Mymensingh', 5, 1 UNION ALL
-SELECT 'Tangail', 'Mymensingh', 8, 1 UNION ALL
-SELECT 'Tangail', 'Mymensingh', 11, 1 UNION ALL
-SELECT 'Tangail', 'Mymensingh', 14, 1 UNION ALL
-SELECT 'Tangail', 'Mymensingh', 17, 1 UNION ALL
-SELECT 'Tangail', 'Mymensingh', 20, 1 UNION ALL
-SELECT 'Mymensingh', 'Bogura', 5, 0 UNION ALL
-SELECT 'Mymensingh', 'Bogura', 8, 0 UNION ALL
-SELECT 'Mymensingh', 'Bogura', 11, 0 UNION ALL
-SELECT 'Mymensingh', 'Bogura', 14, 0 UNION ALL
-SELECT 'Mymensingh', 'Bogura', 17, 0 UNION ALL
-SELECT 'Mymensingh', 'Bogura', 20, 0 UNION ALL
-SELECT 'Bogura', 'Mymensingh', 5, 1 UNION ALL
-SELECT 'Bogura', 'Mymensingh', 8, 1 UNION ALL
-SELECT 'Bogura', 'Mymensingh', 11, 1 UNION ALL
-SELECT 'Bogura', 'Mymensingh', 14, 1 UNION ALL
-SELECT 'Bogura', 'Mymensingh', 17, 1 UNION ALL
-SELECT 'Bogura', 'Mymensingh', 20, 1 UNION ALL
-SELECT 'Tangail', 'Bogura', 5, 0 UNION ALL
-SELECT 'Tangail', 'Bogura', 8, 0 UNION ALL
-SELECT 'Tangail', 'Bogura', 11, 0 UNION ALL
-SELECT 'Tangail', 'Bogura', 14, 0 UNION ALL
-SELECT 'Tangail', 'Bogura', 17, 0 UNION ALL
-SELECT 'Tangail', 'Bogura', 20, 0 UNION ALL
-SELECT 'Bogura', 'Tangail', 5, 1 UNION ALL
-SELECT 'Bogura', 'Tangail', 8, 1 UNION ALL
-SELECT 'Bogura', 'Tangail', 11, 1 UNION ALL
-SELECT 'Bogura', 'Tangail', 14, 1 UNION ALL
-SELECT 'Bogura', 'Tangail', 17, 1 UNION ALL
-SELECT 'Bogura', 'Tangail', 20, 1 UNION ALL
+SELECT 'Narayanganj', 'Coxs Bazar', 5 UNION ALL
+SELECT 'Narayanganj', 'Coxs Bazar', 8 UNION ALL
+SELECT 'Narayanganj', 'Coxs Bazar', 11 UNION ALL
+SELECT 'Narayanganj', 'Coxs Bazar', 14 UNION ALL
+SELECT 'Narayanganj', 'Coxs Bazar', 17 UNION ALL
+SELECT 'Narayanganj', 'Coxs Bazar', 20 UNION ALL
+SELECT 'Coxs Bazar', 'Narayanganj', 5 UNION ALL
+SELECT 'Coxs Bazar', 'Narayanganj', 8 UNION ALL
+SELECT 'Coxs Bazar', 'Narayanganj', 11 UNION ALL
+SELECT 'Coxs Bazar', 'Narayanganj', 14 UNION ALL
+SELECT 'Coxs Bazar', 'Narayanganj', 17 UNION ALL
+SELECT 'Coxs Bazar', 'Narayanganj', 20 UNION ALL
+SELECT 'Gazipur', 'Tangail', 5 UNION ALL
+SELECT 'Gazipur', 'Tangail', 8 UNION ALL
+SELECT 'Gazipur', 'Tangail', 11 UNION ALL
+SELECT 'Gazipur', 'Tangail', 14 UNION ALL
+SELECT 'Gazipur', 'Tangail', 17 UNION ALL
+SELECT 'Gazipur', 'Tangail', 20 UNION ALL
+SELECT 'Tangail', 'Gazipur', 5 UNION ALL
+SELECT 'Tangail', 'Gazipur', 8 UNION ALL
+SELECT 'Tangail', 'Gazipur', 11 UNION ALL
+SELECT 'Tangail', 'Gazipur', 14 UNION ALL
+SELECT 'Tangail', 'Gazipur', 17 UNION ALL
+SELECT 'Tangail', 'Gazipur', 20 UNION ALL
+SELECT 'Mymensingh', 'Tangail', 5 UNION ALL
+SELECT 'Mymensingh', 'Tangail', 8 UNION ALL
+SELECT 'Mymensingh', 'Tangail', 11 UNION ALL
+SELECT 'Mymensingh', 'Tangail', 14 UNION ALL
+SELECT 'Mymensingh', 'Tangail', 17 UNION ALL
+SELECT 'Mymensingh', 'Tangail', 20 UNION ALL
+SELECT 'Tangail', 'Mymensingh', 5 UNION ALL
+SELECT 'Tangail', 'Mymensingh', 8 UNION ALL
+SELECT 'Tangail', 'Mymensingh', 11 UNION ALL
+SELECT 'Tangail', 'Mymensingh', 14 UNION ALL
+SELECT 'Tangail', 'Mymensingh', 17 UNION ALL
+SELECT 'Tangail', 'Mymensingh', 20 UNION ALL
+SELECT 'Mymensingh', 'Bogura', 5 UNION ALL
+SELECT 'Mymensingh', 'Bogura', 8 UNION ALL
+SELECT 'Mymensingh', 'Bogura', 11 UNION ALL
+SELECT 'Mymensingh', 'Bogura', 14 UNION ALL
+SELECT 'Mymensingh', 'Bogura', 17 UNION ALL
+SELECT 'Mymensingh', 'Bogura', 20 UNION ALL
+SELECT 'Bogura', 'Mymensingh', 5 UNION ALL
+SELECT 'Bogura', 'Mymensingh', 8 UNION ALL
+SELECT 'Bogura', 'Mymensingh', 11 UNION ALL
+SELECT 'Bogura', 'Mymensingh', 14 UNION ALL
+SELECT 'Bogura', 'Mymensingh', 17 UNION ALL
+SELECT 'Bogura', 'Mymensingh', 20 UNION ALL
+SELECT 'Tangail', 'Bogura', 5 UNION ALL
+SELECT 'Tangail', 'Bogura', 8 UNION ALL
+SELECT 'Tangail', 'Bogura', 11 UNION ALL
+SELECT 'Tangail', 'Bogura', 14 UNION ALL
+SELECT 'Tangail', 'Bogura', 17 UNION ALL
+SELECT 'Tangail', 'Bogura', 20 UNION ALL
+SELECT 'Bogura', 'Tangail', 5 UNION ALL
+SELECT 'Bogura', 'Tangail', 8 UNION ALL
+SELECT 'Bogura', 'Tangail', 11 UNION ALL
+SELECT 'Bogura', 'Tangail', 14 UNION ALL
+SELECT 'Bogura', 'Tangail', 17 UNION ALL
+SELECT 'Bogura', 'Tangail', 20 UNION ALL
 -- Internal Routes (5-6 times each for major routes, 4 times for minor)
-SELECT 'Chittagong', 'Coxs Bazar', 5, 0 UNION ALL
-SELECT 'Chittagong', 'Coxs Bazar', 8, 0 UNION ALL
-SELECT 'Chittagong', 'Coxs Bazar', 11, 0 UNION ALL
-SELECT 'Chittagong', 'Coxs Bazar', 14, 0 UNION ALL
-SELECT 'Chittagong', 'Coxs Bazar', 17, 0 UNION ALL
-SELECT 'Chittagong', 'Coxs Bazar', 20, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Chittagong', 5, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Chittagong', 8, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Chittagong', 11, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Chittagong', 14, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Chittagong', 17, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Chittagong', 20, 0 UNION ALL
-SELECT 'Chittagong', 'Sylhet', 5, 0 UNION ALL
-SELECT 'Chittagong', 'Sylhet', 8, 0 UNION ALL
-SELECT 'Chittagong', 'Sylhet', 11, 0 UNION ALL
-SELECT 'Chittagong', 'Sylhet', 14, 0 UNION ALL
-SELECT 'Chittagong', 'Sylhet', 17, 0 UNION ALL
-SELECT 'Chittagong', 'Sylhet', 20, 0 UNION ALL
-SELECT 'Sylhet', 'Chittagong', 5, 1 UNION ALL
-SELECT 'Sylhet', 'Chittagong', 8, 1 UNION ALL
-SELECT 'Sylhet', 'Chittagong', 11, 1 UNION ALL
-SELECT 'Sylhet', 'Chittagong', 14, 1 UNION ALL
-SELECT 'Sylhet', 'Chittagong', 17, 1 UNION ALL
-SELECT 'Sylhet', 'Chittagong', 20, 1 UNION ALL
-SELECT 'Chittagong', 'Comilla', 5, 0 UNION ALL
-SELECT 'Chittagong', 'Comilla', 8, 0 UNION ALL
-SELECT 'Chittagong', 'Comilla', 11, 0 UNION ALL
-SELECT 'Chittagong', 'Comilla', 14, 0 UNION ALL
-SELECT 'Chittagong', 'Comilla', 17, 0 UNION ALL
-SELECT 'Chittagong', 'Comilla', 20, 0 UNION ALL
-SELECT 'Comilla', 'Chittagong', 5, 1 UNION ALL
-SELECT 'Comilla', 'Chittagong', 8, 1 UNION ALL
-SELECT 'Comilla', 'Chittagong', 11, 1 UNION ALL
-SELECT 'Comilla', 'Chittagong', 14, 1 UNION ALL
-SELECT 'Comilla', 'Chittagong', 17, 1 UNION ALL
-SELECT 'Comilla', 'Chittagong', 20, 1 UNION ALL
-SELECT 'Chittagong', 'Noakhali', 5, 0 UNION ALL
-SELECT 'Chittagong', 'Noakhali', 8, 0 UNION ALL
-SELECT 'Chittagong', 'Noakhali', 11, 0 UNION ALL
-SELECT 'Chittagong', 'Noakhali', 14, 0 UNION ALL
-SELECT 'Chittagong', 'Noakhali', 17, 0 UNION ALL
-SELECT 'Chittagong', 'Noakhali', 20, 0 UNION ALL
-SELECT 'Noakhali', 'Chittagong', 5, 1 UNION ALL
-SELECT 'Noakhali', 'Chittagong', 8, 1 UNION ALL
-SELECT 'Noakhali', 'Chittagong', 11, 1 UNION ALL
-SELECT 'Noakhali', 'Chittagong', 14, 1 UNION ALL
-SELECT 'Noakhali', 'Chittagong', 17, 1 UNION ALL
-SELECT 'Noakhali', 'Chittagong', 20, 1 UNION ALL
-SELECT 'Chittagong', 'Feni', 5, 0 UNION ALL
-SELECT 'Chittagong', 'Feni', 8, 0 UNION ALL
-SELECT 'Chittagong', 'Feni', 11, 0 UNION ALL
-SELECT 'Chittagong', 'Feni', 14, 0 UNION ALL
-SELECT 'Chittagong', 'Feni', 17, 0 UNION ALL
-SELECT 'Chittagong', 'Feni', 20, 0 UNION ALL
-SELECT 'Feni', 'Chittagong', 5, 1 UNION ALL
-SELECT 'Feni', 'Chittagong', 8, 1 UNION ALL
-SELECT 'Feni', 'Chittagong', 11, 1 UNION ALL
-SELECT 'Feni', 'Chittagong', 14, 1 UNION ALL
-SELECT 'Feni', 'Chittagong', 17, 1 UNION ALL
-SELECT 'Feni', 'Chittagong', 20, 1 UNION ALL
-SELECT 'Sylhet', 'Comilla', 5, 0 UNION ALL
-SELECT 'Sylhet', 'Comilla', 8, 0 UNION ALL
-SELECT 'Sylhet', 'Comilla', 11, 0 UNION ALL
-SELECT 'Sylhet', 'Comilla', 14, 0 UNION ALL
-SELECT 'Sylhet', 'Comilla', 17, 0 UNION ALL
-SELECT 'Sylhet', 'Comilla', 20, 0 UNION ALL
-SELECT 'Comilla', 'Sylhet', 5, 1 UNION ALL
-SELECT 'Comilla', 'Sylhet', 8, 1 UNION ALL
-SELECT 'Comilla', 'Sylhet', 11, 1 UNION ALL
-SELECT 'Comilla', 'Sylhet', 14, 1 UNION ALL
-SELECT 'Comilla', 'Sylhet', 17, 1 UNION ALL
-SELECT 'Comilla', 'Sylhet', 20, 1 UNION ALL
-SELECT 'Sylhet', 'Mymensingh', 5, 0 UNION ALL
-SELECT 'Sylhet', 'Mymensingh', 8, 0 UNION ALL
-SELECT 'Sylhet', 'Mymensingh', 11, 0 UNION ALL
-SELECT 'Sylhet', 'Mymensingh', 14, 0 UNION ALL
-SELECT 'Sylhet', 'Mymensingh', 17, 0 UNION ALL
-SELECT 'Sylhet', 'Mymensingh', 20, 0 UNION ALL
-SELECT 'Mymensingh', 'Sylhet', 5, 1 UNION ALL
-SELECT 'Mymensingh', 'Sylhet', 8, 1 UNION ALL
-SELECT 'Mymensingh', 'Sylhet', 11, 1 UNION ALL
-SELECT 'Mymensingh', 'Sylhet', 14, 1 UNION ALL
-SELECT 'Mymensingh', 'Sylhet', 17, 1 UNION ALL
-SELECT 'Mymensingh', 'Sylhet', 20, 1 UNION ALL
-SELECT 'Rajshahi', 'Bogura', 5, 0 UNION ALL
-SELECT 'Rajshahi', 'Bogura', 8, 0 UNION ALL
-SELECT 'Rajshahi', 'Bogura', 11, 0 UNION ALL
-SELECT 'Rajshahi', 'Bogura', 14, 0 UNION ALL
-SELECT 'Rajshahi', 'Bogura', 17, 0 UNION ALL
-SELECT 'Rajshahi', 'Bogura', 20, 0 UNION ALL
-SELECT 'Bogura', 'Rajshahi', 5, 1 UNION ALL
-SELECT 'Bogura', 'Rajshahi', 8, 1 UNION ALL
-SELECT 'Bogura', 'Rajshahi', 11, 1 UNION ALL
-SELECT 'Bogura', 'Rajshahi', 14, 1 UNION ALL
-SELECT 'Bogura', 'Rajshahi', 17, 1 UNION ALL
-SELECT 'Bogura', 'Rajshahi', 20, 1 UNION ALL
-SELECT 'Rajshahi', 'Pabna', 5, 0 UNION ALL
-SELECT 'Rajshahi', 'Pabna', 8, 0 UNION ALL
-SELECT 'Rajshahi', 'Pabna', 11, 0 UNION ALL
-SELECT 'Rajshahi', 'Pabna', 14, 0 UNION ALL
-SELECT 'Rajshahi', 'Pabna', 17, 0 UNION ALL
-SELECT 'Rajshahi', 'Pabna', 20, 0 UNION ALL
-SELECT 'Pabna', 'Rajshahi', 5, 1 UNION ALL
-SELECT 'Pabna', 'Rajshahi', 8, 1 UNION ALL
-SELECT 'Pabna', 'Rajshahi', 11, 1 UNION ALL
-SELECT 'Pabna', 'Rajshahi', 14, 1 UNION ALL
-SELECT 'Pabna', 'Rajshahi', 17, 1 UNION ALL
-SELECT 'Pabna', 'Rajshahi', 20, 1 UNION ALL
-SELECT 'Rajshahi', 'Dinajpur', 5, 0 UNION ALL
-SELECT 'Rajshahi', 'Dinajpur', 8, 0 UNION ALL
-SELECT 'Rajshahi', 'Dinajpur', 11, 0 UNION ALL
-SELECT 'Rajshahi', 'Dinajpur', 14, 0 UNION ALL
-SELECT 'Rajshahi', 'Dinajpur', 17, 0 UNION ALL
-SELECT 'Rajshahi', 'Dinajpur', 20, 0 UNION ALL
-SELECT 'Dinajpur', 'Rajshahi', 5, 1 UNION ALL
-SELECT 'Dinajpur', 'Rajshahi', 8, 1 UNION ALL
-SELECT 'Dinajpur', 'Rajshahi', 11, 1 UNION ALL
-SELECT 'Dinajpur', 'Rajshahi', 14, 1 UNION ALL
-SELECT 'Dinajpur', 'Rajshahi', 17, 1 UNION ALL
-SELECT 'Dinajpur', 'Rajshahi', 20, 1 UNION ALL
-SELECT 'Khulna', 'Jessore', 5, 0 UNION ALL
-SELECT 'Khulna', 'Jessore', 8, 0 UNION ALL
-SELECT 'Khulna', 'Jessore', 11, 0 UNION ALL
-SELECT 'Khulna', 'Jessore', 14, 0 UNION ALL
-SELECT 'Khulna', 'Jessore', 17, 0 UNION ALL
-SELECT 'Khulna', 'Jessore', 20, 0 UNION ALL
-SELECT 'Jessore', 'Khulna', 5, 1 UNION ALL
-SELECT 'Jessore', 'Khulna', 8, 1 UNION ALL
-SELECT 'Jessore', 'Khulna', 11, 1 UNION ALL
-SELECT 'Jessore', 'Khulna', 14, 1 UNION ALL
-SELECT 'Jessore', 'Khulna', 17, 1 UNION ALL
-SELECT 'Jessore', 'Khulna', 20, 1 UNION ALL
-SELECT 'Khulna', 'Barisal', 5, 0 UNION ALL
-SELECT 'Khulna', 'Barisal', 8, 0 UNION ALL
-SELECT 'Khulna', 'Barisal', 11, 0 UNION ALL
-SELECT 'Khulna', 'Barisal', 14, 0 UNION ALL
-SELECT 'Khulna', 'Barisal', 17, 0 UNION ALL
-SELECT 'Khulna', 'Barisal', 20, 0 UNION ALL
-SELECT 'Barisal', 'Khulna', 5, 1 UNION ALL
-SELECT 'Barisal', 'Khulna', 8, 1 UNION ALL
-SELECT 'Barisal', 'Khulna', 11, 1 UNION ALL
-SELECT 'Barisal', 'Khulna', 14, 1 UNION ALL
-SELECT 'Barisal', 'Khulna', 17, 1 UNION ALL
-SELECT 'Barisal', 'Khulna', 20, 1 UNION ALL
-SELECT 'Rangpur', 'Bogura', 5, 0 UNION ALL
-SELECT 'Rangpur', 'Bogura', 8, 0 UNION ALL
-SELECT 'Rangpur', 'Bogura', 11, 0 UNION ALL
-SELECT 'Rangpur', 'Bogura', 14, 0 UNION ALL
-SELECT 'Rangpur', 'Bogura', 17, 0 UNION ALL
-SELECT 'Rangpur', 'Bogura', 20, 0 UNION ALL
-SELECT 'Bogura', 'Rangpur', 5, 1 UNION ALL
-SELECT 'Bogura', 'Rangpur', 8, 1 UNION ALL
-SELECT 'Bogura', 'Rangpur', 11, 1 UNION ALL
-SELECT 'Bogura', 'Rangpur', 14, 1 UNION ALL
-SELECT 'Bogura', 'Rangpur', 17, 1 UNION ALL
-SELECT 'Bogura', 'Rangpur', 20, 1 UNION ALL
-SELECT 'Rangpur', 'Dinajpur', 5, 0 UNION ALL
-SELECT 'Rangpur', 'Dinajpur', 8, 0 UNION ALL
-SELECT 'Rangpur', 'Dinajpur', 11, 0 UNION ALL
-SELECT 'Rangpur', 'Dinajpur', 14, 0 UNION ALL
-SELECT 'Rangpur', 'Dinajpur', 17, 0 UNION ALL
-SELECT 'Rangpur', 'Dinajpur', 20, 0 UNION ALL
-SELECT 'Dinajpur', 'Rangpur', 5, 1 UNION ALL
-SELECT 'Dinajpur', 'Rangpur', 8, 1 UNION ALL
-SELECT 'Dinajpur', 'Rangpur', 11, 1 UNION ALL
-SELECT 'Dinajpur', 'Rangpur', 14, 1 UNION ALL
-SELECT 'Dinajpur', 'Rangpur', 17, 1 UNION ALL
-SELECT 'Dinajpur', 'Rangpur', 20, 1 UNION ALL
-SELECT 'Coxs Bazar', 'Sylhet', 5, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Sylhet', 8, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Sylhet', 11, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Sylhet', 14, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Sylhet', 17, 0 UNION ALL
-SELECT 'Coxs Bazar', 'Sylhet', 20, 0 UNION ALL
-SELECT 'Sylhet', 'Coxs Bazar', 5, 1 UNION ALL
-SELECT 'Sylhet', 'Coxs Bazar', 8, 1 UNION ALL
-SELECT 'Sylhet', 'Coxs Bazar', 11, 1 UNION ALL
-SELECT 'Sylhet', 'Coxs Bazar', 14, 1 UNION ALL
-SELECT 'Sylhet', 'Coxs Bazar', 17, 1 UNION ALL
-SELECT 'Sylhet', 'Coxs Bazar', 20, 1;
+SELECT 'Chittagong', 'Coxs Bazar', 5 UNION ALL
+SELECT 'Chittagong', 'Coxs Bazar', 8 UNION ALL
+SELECT 'Chittagong', 'Coxs Bazar', 11 UNION ALL
+SELECT 'Chittagong', 'Coxs Bazar', 14 UNION ALL
+SELECT 'Chittagong', 'Coxs Bazar', 17 UNION ALL
+SELECT 'Chittagong', 'Coxs Bazar', 20 UNION ALL
+SELECT 'Coxs Bazar', 'Chittagong', 5 UNION ALL
+SELECT 'Coxs Bazar', 'Chittagong', 8 UNION ALL
+SELECT 'Coxs Bazar', 'Chittagong', 11 UNION ALL
+SELECT 'Coxs Bazar', 'Chittagong', 14 UNION ALL
+SELECT 'Coxs Bazar', 'Chittagong', 17 UNION ALL
+SELECT 'Coxs Bazar', 'Chittagong', 20 UNION ALL
+SELECT 'Chittagong', 'Sylhet', 5 UNION ALL
+SELECT 'Chittagong', 'Sylhet', 8 UNION ALL
+SELECT 'Chittagong', 'Sylhet', 11 UNION ALL
+SELECT 'Chittagong', 'Sylhet', 14 UNION ALL
+SELECT 'Chittagong', 'Sylhet', 17 UNION ALL
+SELECT 'Chittagong', 'Sylhet', 20 UNION ALL
+SELECT 'Sylhet', 'Chittagong', 5 UNION ALL
+SELECT 'Sylhet', 'Chittagong', 8 UNION ALL
+SELECT 'Sylhet', 'Chittagong', 11 UNION ALL
+SELECT 'Sylhet', 'Chittagong', 14 UNION ALL
+SELECT 'Sylhet', 'Chittagong', 17 UNION ALL
+SELECT 'Sylhet', 'Chittagong', 20 UNION ALL
+SELECT 'Chittagong', 'Comilla', 5 UNION ALL
+SELECT 'Chittagong', 'Comilla', 8 UNION ALL
+SELECT 'Chittagong', 'Comilla', 11 UNION ALL
+SELECT 'Chittagong', 'Comilla', 14 UNION ALL
+SELECT 'Chittagong', 'Comilla', 17 UNION ALL
+SELECT 'Chittagong', 'Comilla', 20 UNION ALL
+SELECT 'Comilla', 'Chittagong', 5 UNION ALL
+SELECT 'Comilla', 'Chittagong', 8 UNION ALL
+SELECT 'Comilla', 'Chittagong', 11 UNION ALL
+SELECT 'Comilla', 'Chittagong', 14 UNION ALL
+SELECT 'Comilla', 'Chittagong', 17 UNION ALL
+SELECT 'Comilla', 'Chittagong', 20 UNION ALL
+SELECT 'Chittagong', 'Noakhali', 5 UNION ALL
+SELECT 'Chittagong', 'Noakhali', 8 UNION ALL
+SELECT 'Chittagong', 'Noakhali', 11 UNION ALL
+SELECT 'Chittagong', 'Noakhali', 14 UNION ALL
+SELECT 'Chittagong', 'Noakhali', 17 UNION ALL
+SELECT 'Chittagong', 'Noakhali', 20 UNION ALL
+SELECT 'Noakhali', 'Chittagong', 5 UNION ALL
+SELECT 'Noakhali', 'Chittagong', 8 UNION ALL
+SELECT 'Noakhali', 'Chittagong', 11 UNION ALL
+SELECT 'Noakhali', 'Chittagong', 14 UNION ALL
+SELECT 'Noakhali', 'Chittagong', 17 UNION ALL
+SELECT 'Noakhali', 'Chittagong', 20 UNION ALL
+SELECT 'Chittagong', 'Feni', 5 UNION ALL
+SELECT 'Chittagong', 'Feni', 8 UNION ALL
+SELECT 'Chittagong', 'Feni', 11 UNION ALL
+SELECT 'Chittagong', 'Feni', 14 UNION ALL
+SELECT 'Chittagong', 'Feni', 17 UNION ALL
+SELECT 'Chittagong', 'Feni', 20 UNION ALL
+SELECT 'Feni', 'Chittagong', 5 UNION ALL
+SELECT 'Feni', 'Chittagong', 8 UNION ALL
+SELECT 'Feni', 'Chittagong', 11 UNION ALL
+SELECT 'Feni', 'Chittagong', 14 UNION ALL
+SELECT 'Feni', 'Chittagong', 17 UNION ALL
+SELECT 'Feni', 'Chittagong', 20 UNION ALL
+SELECT 'Sylhet', 'Comilla', 5 UNION ALL
+SELECT 'Sylhet', 'Comilla', 8 UNION ALL
+SELECT 'Sylhet', 'Comilla', 11 UNION ALL
+SELECT 'Sylhet', 'Comilla', 14 UNION ALL
+SELECT 'Sylhet', 'Comilla', 17 UNION ALL
+SELECT 'Sylhet', 'Comilla', 20 UNION ALL
+SELECT 'Comilla', 'Sylhet', 5 UNION ALL
+SELECT 'Comilla', 'Sylhet', 8 UNION ALL
+SELECT 'Comilla', 'Sylhet', 11 UNION ALL
+SELECT 'Comilla', 'Sylhet', 14 UNION ALL
+SELECT 'Comilla', 'Sylhet', 17 UNION ALL
+SELECT 'Comilla', 'Sylhet', 20 UNION ALL
+SELECT 'Sylhet', 'Mymensingh', 5 UNION ALL
+SELECT 'Sylhet', 'Mymensingh', 8 UNION ALL
+SELECT 'Sylhet', 'Mymensingh', 11 UNION ALL
+SELECT 'Sylhet', 'Mymensingh', 14 UNION ALL
+SELECT 'Sylhet', 'Mymensingh', 17 UNION ALL
+SELECT 'Sylhet', 'Mymensingh', 20 UNION ALL
+SELECT 'Mymensingh', 'Sylhet', 5 UNION ALL
+SELECT 'Mymensingh', 'Sylhet', 8 UNION ALL
+SELECT 'Mymensingh', 'Sylhet', 11 UNION ALL
+SELECT 'Mymensingh', 'Sylhet', 14 UNION ALL
+SELECT 'Mymensingh', 'Sylhet', 17 UNION ALL
+SELECT 'Mymensingh', 'Sylhet', 20 UNION ALL
+SELECT 'Rajshahi', 'Bogura', 5 UNION ALL
+SELECT 'Rajshahi', 'Bogura', 8 UNION ALL
+SELECT 'Rajshahi', 'Bogura', 11 UNION ALL
+SELECT 'Rajshahi', 'Bogura', 14 UNION ALL
+SELECT 'Rajshahi', 'Bogura', 17 UNION ALL
+SELECT 'Rajshahi', 'Bogura', 20 UNION ALL
+SELECT 'Bogura', 'Rajshahi', 5 UNION ALL
+SELECT 'Bogura', 'Rajshahi', 8 UNION ALL
+SELECT 'Bogura', 'Rajshahi', 11 UNION ALL
+SELECT 'Bogura', 'Rajshahi', 14 UNION ALL
+SELECT 'Bogura', 'Rajshahi', 17 UNION ALL
+SELECT 'Bogura', 'Rajshahi', 20 UNION ALL
+SELECT 'Rajshahi', 'Pabna', 5 UNION ALL
+SELECT 'Rajshahi', 'Pabna', 8 UNION ALL
+SELECT 'Rajshahi', 'Pabna', 11 UNION ALL
+SELECT 'Rajshahi', 'Pabna', 14 UNION ALL
+SELECT 'Rajshahi', 'Pabna', 17 UNION ALL
+SELECT 'Rajshahi', 'Pabna', 20 UNION ALL
+SELECT 'Pabna', 'Rajshahi', 5 UNION ALL
+SELECT 'Pabna', 'Rajshahi', 8 UNION ALL
+SELECT 'Pabna', 'Rajshahi', 11 UNION ALL
+SELECT 'Pabna', 'Rajshahi', 14 UNION ALL
+SELECT 'Pabna', 'Rajshahi', 17 UNION ALL
+SELECT 'Pabna', 'Rajshahi', 20 UNION ALL
+SELECT 'Rajshahi', 'Dinajpur', 5 UNION ALL
+SELECT 'Rajshahi', 'Dinajpur', 8 UNION ALL
+SELECT 'Rajshahi', 'Dinajpur', 11 UNION ALL
+SELECT 'Rajshahi', 'Dinajpur', 14 UNION ALL
+SELECT 'Rajshahi', 'Dinajpur', 17 UNION ALL
+SELECT 'Rajshahi', 'Dinajpur', 20 UNION ALL
+SELECT 'Dinajpur', 'Rajshahi', 5 UNION ALL
+SELECT 'Dinajpur', 'Rajshahi', 8 UNION ALL
+SELECT 'Dinajpur', 'Rajshahi', 11 UNION ALL
+SELECT 'Dinajpur', 'Rajshahi', 14 UNION ALL
+SELECT 'Dinajpur', 'Rajshahi', 17 UNION ALL
+SELECT 'Dinajpur', 'Rajshahi', 20 UNION ALL
+SELECT 'Khulna', 'Jessore', 5 UNION ALL
+SELECT 'Khulna', 'Jessore', 8 UNION ALL
+SELECT 'Khulna', 'Jessore', 11 UNION ALL
+SELECT 'Khulna', 'Jessore', 14 UNION ALL
+SELECT 'Khulna', 'Jessore', 17 UNION ALL
+SELECT 'Khulna', 'Jessore', 20 UNION ALL
+SELECT 'Jessore', 'Khulna', 5 UNION ALL
+SELECT 'Jessore', 'Khulna', 8 UNION ALL
+SELECT 'Jessore', 'Khulna', 11 UNION ALL
+SELECT 'Jessore', 'Khulna', 14 UNION ALL
+SELECT 'Jessore', 'Khulna', 17 UNION ALL
+SELECT 'Jessore', 'Khulna', 20 UNION ALL
+SELECT 'Khulna', 'Barisal', 5 UNION ALL
+SELECT 'Khulna', 'Barisal', 8 UNION ALL
+SELECT 'Khulna', 'Barisal', 11 UNION ALL
+SELECT 'Khulna', 'Barisal', 14 UNION ALL
+SELECT 'Khulna', 'Barisal', 17 UNION ALL
+SELECT 'Khulna', 'Barisal', 20 UNION ALL
+SELECT 'Barisal', 'Khulna', 5 UNION ALL
+SELECT 'Barisal', 'Khulna', 8 UNION ALL
+SELECT 'Barisal', 'Khulna', 11 UNION ALL
+SELECT 'Barisal', 'Khulna', 14 UNION ALL
+SELECT 'Barisal', 'Khulna', 17 UNION ALL
+SELECT 'Barisal', 'Khulna', 20 UNION ALL
+SELECT 'Rangpur', 'Bogura', 5 UNION ALL
+SELECT 'Rangpur', 'Bogura', 8 UNION ALL
+SELECT 'Rangpur', 'Bogura', 11 UNION ALL
+SELECT 'Rangpur', 'Bogura', 14 UNION ALL
+SELECT 'Rangpur', 'Bogura', 17 UNION ALL
+SELECT 'Rangpur', 'Bogura', 20 UNION ALL
+SELECT 'Bogura', 'Rangpur', 5 UNION ALL
+SELECT 'Bogura', 'Rangpur', 8 UNION ALL
+SELECT 'Bogura', 'Rangpur', 11 UNION ALL
+SELECT 'Bogura', 'Rangpur', 14 UNION ALL
+SELECT 'Bogura', 'Rangpur', 17 UNION ALL
+SELECT 'Bogura', 'Rangpur', 20 UNION ALL
+SELECT 'Rangpur', 'Dinajpur', 5 UNION ALL
+SELECT 'Rangpur', 'Dinajpur', 8 UNION ALL
+SELECT 'Rangpur', 'Dinajpur', 11 UNION ALL
+SELECT 'Rangpur', 'Dinajpur', 14 UNION ALL
+SELECT 'Rangpur', 'Dinajpur', 17 UNION ALL
+SELECT 'Rangpur', 'Dinajpur', 20 UNION ALL
+SELECT 'Dinajpur', 'Rangpur', 5 UNION ALL
+SELECT 'Dinajpur', 'Rangpur', 8 UNION ALL
+SELECT 'Dinajpur', 'Rangpur', 11 UNION ALL
+SELECT 'Dinajpur', 'Rangpur', 14 UNION ALL
+SELECT 'Dinajpur', 'Rangpur', 17 UNION ALL
+SELECT 'Dinajpur', 'Rangpur', 20 UNION ALL
+SELECT 'Coxs Bazar', 'Sylhet', 5 UNION ALL
+SELECT 'Coxs Bazar', 'Sylhet', 8 UNION ALL
+SELECT 'Coxs Bazar', 'Sylhet', 11 UNION ALL
+SELECT 'Coxs Bazar', 'Sylhet', 14 UNION ALL
+SELECT 'Coxs Bazar', 'Sylhet', 17 UNION ALL
+SELECT 'Coxs Bazar', 'Sylhet', 20 UNION ALL
+SELECT 'Sylhet', 'Coxs Bazar', 5 UNION ALL
+SELECT 'Sylhet', 'Coxs Bazar', 8 UNION ALL
+SELECT 'Sylhet', 'Coxs Bazar', 11 UNION ALL
+SELECT 'Sylhet', 'Coxs Bazar', 14 UNION ALL
+SELECT 'Sylhet', 'Coxs Bazar', 17 UNION ALL
+SELECT 'Sylhet', 'Coxs Bazar', 20;
+
+-- =====================================================
+-- Expand base assignments to 4 days (today + next 3 days)
+-- =====================================================
+INSERT INTO unique_assignments (route_from, route_to, hours_offset, days_offset)
+SELECT ba.route_from, ba.route_to, ba.hours_offset, gs.day_offset
+FROM base_assignments ba
+CROSS JOIN generate_series(0, 3) AS gs(day_offset);
+
+-- =====================================================
+-- Clean up base_assignments temp table
+-- =====================================================
+DROP TABLE IF EXISTS base_assignments;
 
 -- Update with route IDs and times
 UPDATE unique_assignments ua
@@ -1099,8 +1121,9 @@ SELECT DISTINCT
     ua.route_id,
     ua.departure_time,
     ua.arrival_time,
-    -- hashtext returns an integer, perfect for modulo distribution
-    (abs(hashtext(ua.route_from || ua.route_to || ua.hours_offset::text)) % 
+-- hashtext returns an integer, perfect for modulo distribution
+    -- Include days_offset to give each day different bus assignments
+    (abs(hashtext(ua.route_from || ua.route_to || ua.hours_offset::text || ua.days_offset::text)) % 
         (SELECT COUNT(*) FROM bus_pool) + 1)::int as bus_rn
 FROM unique_assignments ua;
 
@@ -1211,7 +1234,7 @@ LEFT JOIN schedules s ON b.id = s.bus_id
 GROUP BY b.id, b.bus_number, b.bus_name
 ORDER BY COUNT(s.id) DESC;
 
--- Summary by time of day
+-- Summary by time of day (4 days of data)
 SELECT 
     CASE 
         WHEN EXTRACT(HOUR FROM departure_time) BETWEEN 5 AND 9 THEN 'Morning (5-9 AM)'
@@ -1219,10 +1242,19 @@ SELECT
         WHEN EXTRACT(HOUR FROM departure_time) BETWEEN 15 AND 18 THEN 'Afternoon (3-6 PM)'
         ELSE 'Evening/Night (7 PM+)'
     END as time_period,
-    COUNT(*) as schedules_per_day
+    COUNT(*) as total_schedules_4days
 FROM schedules
 WHERE departure_time >= CURRENT_DATE
 GROUP BY time_period
 ORDER BY MIN(departure_time);
 
-SELECT '✓ All schedules are conflict-free!' AS status;
+-- Schedules by day
+SELECT 
+    DATE(departure_time) as travel_date,
+    COUNT(*) as schedules_on_day
+FROM schedules
+WHERE departure_time >= CURRENT_DATE
+GROUP BY DATE(departure_time)
+ORDER BY travel_date;
+
+SELECT '✓ All schedules are conflict-free! 4 days of data generated.' AS status;
