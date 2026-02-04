@@ -244,6 +244,8 @@ export function generateTicketHTML(ticket: TicketData): string {
         .content { padding: 24px; }
         .ref { background: #f3f4f6; padding: 12px 16px; border-radius: 8px; text-align: center; margin-bottom: 24px; }
         .ref span { font-family: monospace; font-size: 18px; font-weight: bold; color: #4f46e5; }
+        .passenger { background: #f0fdf4; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; border: 1px solid #bbf7d0; }
+        .passenger span { font-size: 14px; color: #166534; font-weight: 600; }
         .route { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; }
         .city { text-align: center; }
         .city h3 { font-size: 18px; color: #111827; }
@@ -275,6 +277,10 @@ export function generateTicketHTML(ticket: TicketData): string {
         <div class="content">
           <div class="ref">
             Booking Reference: <span>${ticket.bookingReference}</span>
+          </div>
+          
+          <div class="passenger">
+            Passenger Name: <span>${ticket.passengerName}</span>
           </div>
           
           <div class="route">
