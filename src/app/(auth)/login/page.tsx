@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { Mail, Lock, Eye, EyeOff, Bus, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Bus, ArrowRight, AlertCircle } from 'lucide-react';
 
 // Rate limit error messages from Supabase
 const RATE_LIMIT_ERRORS = [
@@ -72,58 +72,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async (role: 'user' | 'admin') => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const supabase = createClient();
-      
-      // For demo purposes, we'll use a pre-configured demo account
-      // In production, you would use proper authentication
-      const { error } = await supabase.auth.signInWithPassword({
-        email: role === 'admin' ? 'admin@demo.com' : 'user@demo.com',
-        password: 'demo123456',
-      });
-
-      if (error) {
-        // If demo account doesn't exist, create it
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: role === 'admin' ? 'admin@demo.com' : 'user@demo.com',
-          password: 'demo123456',
-          options: {
-            data: {
-              full_name: role === 'admin' ? 'Demo Admin' : 'Demo User',
-            },
-          },
-        });
-
-        if (signUpError) {
-          setError(signUpError.message);
-          return;
-        }
-
-        // Try logging in again
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: role === 'admin' ? 'admin@demo.com' : 'user@demo.com',
-          password: 'demo123456',
-        });
-
-        if (loginError) {
-          setError(loginError.message);
-          return;
-        }
-      }
-
-      router.push(role === 'admin' ? '/dashboard/admin' : '/dashboard/user');
-      router.refresh();
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Form */}
@@ -150,37 +98,8 @@ export default function LoginPage() {
               </div>
               {showRateLimitOptions && (
                 <div className="mt-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
-                  <p className="text-sm text-amber-800 mb-3">
-                    <strong>Options:</strong>
-                  </p>
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowRateLimitOptions(false);
-                        setError(null);
-                        // Retry with different email format hint
-                      }}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border border-amber-200 rounded-lg text-amber-800 hover:bg-amber-50 transition-colors text-sm"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Clear and try again
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowRateLimitOptions(false);
-                        setError(null);
-                        // Switch to demo login
-                        handleDemoLogin('user');
-                      }}
-                      className="w-full btn-secondary btn-sm"
-                    >
-                      Use Demo Account Instead
-                    </button>
-                  </div>
-                  <p className="mt-3 text-xs text-amber-700">
-                    Wait a few minutes before trying again, or use a demo account to explore the app.
+                  <p className="text-sm text-amber-800">
+                    Too many login attempts. Please wait a few minutes before trying again.
                   </p>
                 </div>
               )}
@@ -259,36 +178,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Divider */}
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-secondary-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-secondary-500">Or continue with</span>
-            </div>
-          </div>
-
-          {/* Demo Accounts */}
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('user')}
-              disabled={loading}
-              className="btn-secondary btn-md"
-            >
-              Demo User
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('admin')}
-              disabled={loading}
-              className="btn-secondary btn-md"
-            >
-              Demo Admin
-            </button>
-          </div>
 
           {/* Sign Up Link */}
           <p className="mt-8 text-center text-secondary-600">
