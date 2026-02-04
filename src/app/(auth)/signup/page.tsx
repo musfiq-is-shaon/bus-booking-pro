@@ -161,12 +161,12 @@ export default function SignupPage() {
             </div>
           )}
 
-          <form onSubmit={handleSignup} className="space-y-5">
+          <form onSubmit={handleSignup} autoComplete="off" data-lpignore="true" data-form-type="other" className="space-y-5">
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-secondary-700 mb-2">Full name</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
-                <input id="fullName" type="text" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} className="input pl-12" placeholder="Enter your full name" required />
+                <input id="fullName" type="text" autoComplete="off" data-lpignore="true" data-form-type="other" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} className="input pl-12" placeholder="Enter your full name" required />
               </div>
             </div>
 
@@ -174,7 +174,7 @@ export default function SignupPage() {
               <label htmlFor="email" className="block text-sm font-medium text-secondary-700 mb-2">Email address</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
-                <input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input pl-12" placeholder="Enter your email" required />
+                <input id="email" type="email" autoComplete="off" data-lpignore="true" data-form-type="other" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="input pl-12" placeholder="Enter your email" required />
               </div>
             </div>
 
@@ -182,7 +182,7 @@ export default function SignupPage() {
               <label htmlFor="password" className="block text-sm font-medium text-secondary-700 mb-2">Password</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
-                <input id="password" type={showPassword ? 'text' : 'password'} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="input pl-12 pr-12" placeholder="Create a password" required />
+                <input id="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" data-lpignore="true" data-form-type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="input pl-12 pr-12" placeholder="Create a password" required />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600">
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>

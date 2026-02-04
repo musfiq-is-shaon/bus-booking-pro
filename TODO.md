@@ -1,38 +1,23 @@
-# TODO - Date Inconsistency Bug Fixes
+# Plan: Prevent Browser Auto-Fill Credentials on Signup Form
 
-## Summary of Fixes Applied
+## Problem
+When users click signup, the browser automatically fills saved credentials, which interferes with the signup form functionality.
 
-### 1. Fixed Server-Side Timezone Handling
-**Problem:** The server was using timezone-dependent calculations that didn't work correctly in all environments.
+## Solution
+Add appropriate `autoComplete` attributes and data attributes to prevent browser password managers from auto-filling the signup form.
 
-**Fix:** Changed all server-side date comparisons to use UTC consistently:
-- `canBookSchedule()` now uses `new Date()` (UTC) instead of `getNowInBangladeshTime()`
-- `getMinutesUntilDeparture()` now uses `new Date()` (UTC) instead of `getNowInBangladeshTime()`
-- `searchSchedules()` now uses `getNowUTC()` instead of `getNowInBangladeshTime()`
+## Changes Made
 
-### 2. Fixed getDayBoundsLocal() in search/page.tsx
-**Problem:** Search for Feb 5 was showing Feb 6 midnight tickets.
+### File: `src/app/(auth)/signup/page.tsx` ✅ COMPLETED
 
-**Fix:** Changed UTC bounds to properly convert Bangladesh local time:
-```typescript
-const startOfDayUTC = new Date(Date.UTC(year, month, day - 1, 18, 0, 0));
-const endOfDayUTC = new Date(Date.UTC(year, month, day, 18, 0, 0));
-```
+1. ✅ Form element: Added `autoComplete="off"` + `data-lpignore="true"` + `data-form-type="other"`
+2. ✅ FullName input: Added `autoComplete="off"` + `data-lpignore="true"` + `data-form-type="other"`
+3. ✅ Email input: Added `autoComplete="off"` + `data-lpignore="true"` + `data-form-type="other"`
+4. ✅ Password input: Kept `autoComplete="new-password"` + added `data-lpignore="true"` + `data-form-type="password"`
 
-### 3. Fixed Timezone Calculation in utils.ts
-**Problem:** `getNowInBangladeshTime()` was adding 12 hours instead of 6 for UTC+6 timezones.
-
-**Fix:** Corrected the calculation:
-```typescript
-const utcTime = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
-return new Date(utcTime + (6 * 60 * 60 * 1000));
-```
-
-### 4. Increased Refresh Interval
-Changed auto-refresh from 10 seconds to 60 seconds to reduce API calls.
-
-## Files Modified
-- `src/lib/utils.ts` - Fixed timezone calculations
-- `src/actions/bookings.ts` - Fixed server-side search to use UTC
-- `src/app/search/page.tsx` - Fixed date bounds calculation
+## Result
+✅ Browser auto-fill credentials prevention is now active on the signup form. The following attributes will prevent browsers and password managers (including LastPass) from interfering with the signup form:
+- `autoComplete="off"` - Tells browsers to disable auto-complete
+- `data-lpignore="true"` - Tells LastPass to ignore this field
+- `data-form-type="other"` - Prevents password managers from treating this as a login form
 
