@@ -1,0 +1,413 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { Ticket, Search, Eye, X, Check, Clock, User, Bus, MapPin, Calendar } from 'lucide-react';
+import { formatCurrency, formatDate, formatTime } from '@/lib/utils';
+
+interface Booking {
+  id: string;
+  booking_reference: string;
+  user_id: string;
+  schedule_id: string;
+  seats_booked: number[];
+  passenger_details: any[];
+  total_price: number;
+  status: string;
+  payment_method: string;
+  payment_id: string;
+  created_at: string;
+  user?: { email: string; full_name: string; phone: string };
+  schedule?: {
+    departure_time: string;
+    bus?: { bus_name: string; bus_number: string; bus_type: string };
+    route?: { from_city: string; to_city: string; price: number };
+  };
+}
+
+export default function AdminBookingsPage() {
+  const supabase = createClient();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        user:profiles(email, full_name, phone),
+        schedule:schedules(
+          departure_time,
+          bus:buses(bus_name, bus_number, bus_type),
+          route:routes(from_city, to_city, price)
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (!error) {
+      setBookings(data || []);
+    }
+    setLoading(false);
+  };
+
+  const handleStatusUpdate = async (bookingId: string, newStatus: string) => {
+    setUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: newStatus })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+      fetchBookings();
+      setSelectedBooking(null);
+    } catch (err: any) {
+      console.error('Error updating status:', err);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCancelBooking = async (bookingId: string) => {
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    await handleStatusUpdate(bookingId, 'cancelled');
+  };
+
+  const handleConfirmBooking = async (bookingId: string) => {
+    await handleStatusUpdate(bookingId, 'confirmed');
+  };
+
+  const filteredBookings = bookings.filter(booking => {
+    const matchesSearch = !searchQuery ||
+      booking.booking_reference.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      `${booking.schedule?.route?.from_city} ${booking.schedule?.route?.to_city}`.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'badge-success';
+      case 'pending':
+        return 'badge-warning';
+      case 'cancelled':
+        return 'badge-danger';
+      case 'completed':
+        return 'bg-blue-100 text-blue-700';
+      default:
+        return 'bg-secondary-100 text-secondary-700';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="spinner w-8 h-8 border-4 mx-auto" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-secondary-900">Manage Bookings</h1>
+        <p className="text-secondary-500">View and manage all customer bookings</p>
+      </div>
+
+      {/* Filters */}
+      <div className="card p-4 mb-6">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
+            <input
+              type="text"
+              placeholder="Search by reference, customer, or route..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pl-12"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="input"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-secondary-900">{bookings.length}</p>
+          <p className="text-sm text-secondary-500">Total</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-amber-600">{bookings.filter(b => b.status === 'pending').length}</p>
+          <p className="text-sm text-secondary-500">Pending</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-green-600">{bookings.filter(b => b.status === 'confirmed').length}</p>
+          <p className="text-sm text-secondary-500">Confirmed</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-secondary-900">{formatCurrency(bookings.reduce((sum, b) => sum + Number(b.total_price), 0))}</p>
+          <p className="text-sm text-secondary-500">Revenue</p>
+        </div>
+      </div>
+
+      {/* Bookings Table */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-secondary-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Reference</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Route</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Bus</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Seats</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-secondary-100">
+              {filteredBookings.map((booking) => (
+                <tr key={booking.id} className="hover:bg-secondary-50">
+                  <td className="px-6 py-4 text-sm font-medium text-secondary-900">
+                    {booking.booking_reference}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <div>
+                      <p className="font-medium text-secondary-900">{booking.user?.full_name || 'N/A'}</p>
+                      <p className="text-xs text-secondary-500">{booking.user?.email}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-secondary-600">
+                    {booking.schedule?.route?.from_city} → {booking.schedule?.route?.to_city}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-secondary-600">
+                    {booking.schedule?.bus?.bus_name}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-secondary-600">
+                    {formatDate(booking.schedule?.departure_time)}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-secondary-600">
+                    <span className="px-2 py-1 bg-secondary-100 rounded-lg">
+                      {booking.seats_booked?.length} seats
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm font-medium text-secondary-900">
+                    {formatCurrency(booking.total_price)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`badge ${getStatusBadge(booking.status)}`}>
+                      {booking.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedBooking(booking)}
+                        className="p-2 text-secondary-400 hover:text-secondary-600 hover:bg-secondary-100 rounded-lg transition-colors"
+                        title="View Details"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {booking.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleConfirmBooking(booking.id)}
+                            className="p-2 text-green-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Confirm"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleCancelBooking(booking.id)}
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredBookings.length === 0 && (
+          <div className="p-12 text-center">
+            <Ticket className="w-16 h-16 text-secondary-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-secondary-900 mb-2">No bookings found</h3>
+            <p className="text-secondary-500">Try adjusting your search or filter criteria</p>
+          </div>
+        )}
+      </div>
+
+      {/* Booking Details Modal */}
+      {selectedBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-secondary-100">
+              <h2 className="text-xl font-semibold text-secondary-900">Booking Details</h2>
+              <button
+                onClick={() => setSelectedBooking(null)}
+                className="p-2 text-secondary-400 hover:text-secondary-600 hover:bg-secondary-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Reference & Status */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold text-secondary-900">{selectedBooking.booking_reference}</p>
+                  <p className="text-sm text-secondary-500">Booked on {formatDate(selectedBooking.created_at)}</p>
+                </div>
+                <span className={`badge ${getStatusBadge(selectedBooking.status)} text-sm`}>
+                  {selectedBooking.status}
+                </span>
+              </div>
+
+              {/* Route Info */}
+              <div className="bg-secondary-50 rounded-xl p-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 text-center">
+                    <p className="text-xl font-bold text-secondary-900">{formatTime(selectedBooking.schedule?.departure_time)}</p>
+                    <p className="text-sm text-secondary-500">{selectedBooking.schedule?.route?.from_city}</p>
+                  </div>
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="h-px flex-1 bg-secondary-300" />
+                    <MapPin className="w-4 h-4 mx-2 text-secondary-400" />
+                    <div className="h-px flex-1 bg-secondary-300" />
+                  </div>
+                  <div className="flex-1 text-center">
+                    <p className="text-xl font-bold text-secondary-900">
+                      {formatTime(new Date(selectedBooking.schedule?.departure_time || '').getTime() + 4 * 60 * 60 * 1000)}
+                    </p>
+                    <p className="text-sm text-secondary-500">{selectedBooking.schedule?.route?.to_city}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <Bus className="w-4 h-4 text-secondary-400" />
+                    <span className="text-secondary-600">{selectedBooking.schedule?.bus?.bus_name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-secondary-400" />
+                    <span className="text-secondary-600">{formatDate(selectedBooking.schedule?.departure_time)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              <div>
+                <h3 className="font-semibold text-secondary-900 mb-3">Customer Information</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="w-4 h-4 text-secondary-400" />
+                    <span className="text-secondary-600">{selectedBooking.user?.full_name || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-secondary-400 ml-6">{selectedBooking.user?.email}</span>
+                  </div>
+                  {selectedBooking.user?.phone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-secondary-400 ml-6">{selectedBooking.user.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Seats */}
+              <div>
+                <h3 className="font-semibold text-secondary-900 mb-3">Seats Booked</h3>
+                <div className="flex flex-wrap gap-2">
+                  {selectedBooking.seats_booked?.map((seat: number) => (
+                    <span key={seat} className="px-3 py-1 bg-primary-100 text-primary-700 rounded-lg font-medium">
+                      Seat {seat}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price */}
+              <div className="flex items-center justify-between pt-4 border-t border-secondary-100">
+                <span className="font-medium text-secondary-900">Total Paid</span>
+                <span className="text-2xl font-bold text-secondary-900">{formatCurrency(selectedBooking.total_price)}</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                {selectedBooking.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => handleConfirmBooking(selectedBooking.id)}
+                      disabled={updating}
+                      className="flex-1 btn-primary"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Confirm Booking
+                    </button>
+                    <button
+                      onClick={() => handleCancelBooking(selectedBooking.id)}
+                      disabled={updating}
+                      className="flex-1 btn-outline text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </button>
+                  </>
+                )}
+                {selectedBooking.status === 'confirmed' && (
+                  <button
+                    onClick={() => handleStatusUpdate(selectedBooking.id, 'completed')}
+                    disabled={updating}
+                    className="flex-1 btn-primary"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Mark as Completed
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedBooking(null)}
+                  className="flex-1 btn-secondary"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

@@ -1,0 +1,518 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { Calendar, Plus, Search, Edit, Trash2, X, Bus, MapPin, Clock, Users } from 'lucide-react';
+import { formatCurrency, formatDate, formatTime, CITIES } from '@/lib/utils';
+
+interface Schedule {
+  id: string;
+  bus_id: string;
+  route_id: string;
+  departure_time: string;
+  arrival_time: string;
+  available_seats: number;
+  status: string;
+  bus?: { bus_name: string; bus_number: string; bus_type: string; total_seats: number };
+  route?: { from_city: string; to_city: string; price: number; distance_km?: number };
+}
+
+interface Bus {
+  id: string;
+  bus_name: string;
+  bus_number: string;
+}
+
+interface Route {
+  id: string;
+  from_city: string;
+  to_city: string;
+  price: number;
+}
+
+export default function AdminSchedulesPage() {
+  const supabase = createClient();
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [buses, setBuses] = useState<Bus[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [formData, setFormData] = useState({
+    busId: '',
+    routeId: '',
+    departureDate: '',
+    departureTime: '',
+    arrivalTime: '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const [schedulesData, busesData, routesData] = await Promise.all([
+      supabase
+        .from('schedules')
+        .select(`
+          *,
+          bus:buses(*),
+          route:routes(*)
+        `)
+        .order('departure_time', { ascending: true }),
+      supabase.from('buses').select('id, bus_name, bus_number').eq('is_active', true),
+      supabase.from('routes').select('id, from_city, to_city, price').eq('is_active', true),
+    ]);
+
+    if (!schedulesData.error) setSchedules(schedulesData.data || []);
+    if (!busesData.error) setBuses(busesData.data || []);
+    if (!routesData.error) setRoutes(routesData.data || []);
+    setLoading(false);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      busId: '',
+      routeId: '',
+      departureDate: '',
+      departureTime: '07:00',
+      arrivalTime: '',
+    });
+    setEditingSchedule(null);
+    setError('');
+    setShowModal(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+
+    if (!formData.busId || !formData.routeId || !formData.departureDate) {
+      setError('Please fill in all required fields');
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Please sign in to continue');
+        setSubmitting(false);
+        return;
+      }
+
+      const departureTime = `${formData.departureDate}T${formData.departureTime}:00+06:00`;
+      
+      // Calculate arrival time based on route duration
+      const selectedRoute = routes.find(r => r.id === formData.routeId);
+      const departure = new Date(departureTime);
+      const durationMinutes = selectedRoute ? 300 : 240; // Default 5 hours
+      const arrivalTime = new Date(departure.getTime() + durationMinutes * 60000);
+      const arrivalTimeStr = arrivalTime.toISOString();
+
+      if (editingSchedule) {
+        const { error: updateError } = await supabase
+          .from('schedules')
+          .update({
+            bus_id: formData.busId,
+            route_id: formData.routeId,
+            departure_time: departureTime,
+            arrival_time: arrivalTimeStr,
+          })
+          .eq('id', editingSchedule.id);
+
+        if (updateError) throw updateError;
+        setSuccess('Schedule updated successfully!');
+      } else {
+        // Get bus total seats
+        const selectedBus = buses.find(b => b.id === formData.busId);
+        const totalSeats = selectedBus ? 40 : 40; // Default
+
+        const { error: insertError } = await supabase
+          .from('schedules')
+          .insert({
+            bus_id: formData.busId,
+            route_id: formData.routeId,
+            departure_time: departureTime,
+            arrival_time: arrivalTimeStr,
+            available_seats: totalSeats,
+            status: 'scheduled',
+            created_by: user.id,
+          });
+
+        if (insertError) throw insertError;
+        setSuccess('Schedule created successfully!');
+      }
+
+      resetForm();
+      fetchData();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (schedule: Schedule) => {
+    const depDate = new Date(schedule.departure_time);
+    setEditingSchedule(schedule);
+    setFormData({
+      busId: schedule.bus_id,
+      routeId: schedule.route_id,
+      departureDate: depDate.toISOString().split('T')[0],
+      departureTime: depDate.toTimeString().slice(0, 5),
+      arrivalTime: '',
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (scheduleId: string) => {
+    if (!confirm('Are you sure you want to delete this schedule?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('schedules')
+        .delete()
+        .eq('id', scheduleId);
+
+      if (error) throw error;
+      setSuccess('Schedule deleted successfully!');
+      fetchData();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
+    }
+  };
+
+  const handleStatusChange = async (scheduleId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('schedules')
+        .update({ status: newStatus })
+        .eq('id', scheduleId);
+
+      if (error) throw error;
+      setSuccess('Status updated successfully!');
+      fetchData();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
+    }
+  };
+
+  const filteredSchedules = schedules.filter(schedule => {
+    const matchesSearch = !searchQuery || 
+      `${schedule.route?.from_city} ${schedule.route?.to_city}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      schedule.bus?.bus_name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesDate = !dateFilter || 
+      new Date(schedule.departure_time).toISOString().split('T')[0] === dateFilter;
+
+    return matchesSearch && matchesDate;
+  });
+
+  // Group by date
+  const groupedSchedules = filteredSchedules.reduce((acc, schedule) => {
+    const date = formatDate(schedule.departure_time);
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(schedule);
+    return acc;
+  }, {} as Record<string, Schedule[]>);
+
+  // Get tomorrow's date for default
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const defaultDate = tomorrow.toISOString().split('T')[0];
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="spinner w-8 h-8 border-4 mx-auto" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-secondary-900">Manage Schedules</h1>
+          <p className="text-secondary-500">Create and manage bus trips</p>
+        </div>
+        <button
+          onClick={() => { resetForm(); setShowModal(true); }}
+          className="btn-primary"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          Create Schedule
+        </button>
+      </div>
+
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="mb-6 p-4 bg-green-50 text-green-700 rounded-xl border border-green-200">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200">
+          {error}
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="card p-4 mb-6">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary-400" />
+            <input
+              type="text"
+              placeholder="Search routes or buses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input pl-12"
+            />
+          </div>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="input"
+          />
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-secondary-900">{schedules.length}</p>
+          <p className="text-sm text-secondary-500">Total</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-purple-600">{schedules.filter(s => s.status === 'scheduled').length}</p>
+          <p className="text-sm text-secondary-500">Scheduled</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-blue-600">{schedules.filter(s => s.status === 'departed').length}</p>
+          <p className="text-sm text-secondary-500">Departed</p>
+        </div>
+        <div className="card p-4 text-center">
+          <p className="text-2xl font-bold text-green-600">{schedules.filter(s => s.available_seats > 0).length}</p>
+          <p className="text-sm text-secondary-500">Available</p>
+        </div>
+      </div>
+
+      {/* Schedules by Date */}
+      <div className="space-y-6">
+        {Object.entries(groupedSchedules).map(([date, dateSchedules]) => (
+          <div key={date} className="card">
+            <div className="px-6 py-3 bg-secondary-50 border-b border-secondary-100 flex items-center justify-between">
+              <h3 className="font-semibold text-secondary-900 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary-600" />
+                {date}
+              </h3>
+              <span className="badge bg-secondary-200 text-secondary-700">{dateSchedules.length} trips</span>
+            </div>
+            <div className="divide-y divide-secondary-100">
+              {dateSchedules.map((schedule) => (
+                <div key={schedule.id} className="p-4 hover:bg-secondary-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      {/* Bus Info */}
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Bus className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-secondary-900">{schedule.bus?.bus_name}</p>
+                        <p className="text-xs text-secondary-500 capitalize">{schedule.bus?.bus_type}</p>
+                      </div>
+
+                      {/* Route */}
+                      <div className="flex items-center gap-3 mx-4">
+                        <div className="text-center">
+                          <p className="font-semibold text-secondary-900">{formatTime(schedule.departure_time)}</p>
+                          <p className="text-xs text-secondary-500">{schedule.route?.from_city}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-primary-500" />
+                          <div className="w-16 h-px bg-secondary-300" />
+                          <div className="w-2 h-2 rounded-full bg-green-500" />
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-secondary-900">{formatTime(schedule.arrival_time)}</p>
+                          <p className="text-xs text-secondary-500">{schedule.route?.to_city}</p>
+                        </div>
+                      </div>
+
+                      {/* Price */}
+                      <div className="hidden md:block">
+                        <p className="font-bold text-secondary-900">{formatCurrency(schedule.route?.price || 0)}</p>
+                      </div>
+
+                      {/* Seats */}
+                      <div className="flex items-center gap-1 text-sm text-secondary-500">
+                        <Users className="w-4 h-4" />
+                        <span className={schedule.available_seats < 10 ? 'text-red-600 font-medium' : ''}>
+                          {schedule.available_seats} seats
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status & Actions */}
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={schedule.status}
+                        onChange={(e) => handleStatusChange(schedule.id, e.target.value)}
+                        className={`badge cursor-pointer ${
+                          schedule.status === 'scheduled' ? 'badge-success' :
+                          schedule.status === 'departed' ? 'bg-blue-100 text-blue-700' :
+                          schedule.status === 'arrived' ? 'bg-purple-100 text-purple-700' :
+                          'badge-danger'
+                        }`}
+                      >
+                        <option value="scheduled">Scheduled</option>
+                        <option value="departed">Departed</option>
+                        <option value="arrived">Arrived</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleEdit(schedule)}
+                          className="p-2 text-secondary-400 hover:text-secondary-600 hover:bg-secondary-100 rounded-lg transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(schedule.id)}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filteredSchedules.length === 0 && (
+        <div className="card p-12 text-center">
+          <Calendar className="w-16 h-16 text-secondary-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-secondary-900 mb-2">No schedules found</h3>
+          <p className="text-secondary-500 mb-4">
+            {dateFilter || searchQuery ? 'Try adjusting your filters' : 'Create your first schedule'}
+          </p>
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="btn-primary"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create Schedule
+          </button>
+        </div>
+      )}
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg">
+            <div className="flex items-center justify-between p-6 border-b border-secondary-100">
+              <h2 className="text-xl font-semibold text-secondary-900">
+                {editingSchedule ? 'Edit Schedule' : 'Create New Schedule'}
+              </h2>
+              <button onClick={resetForm} className="p-2 text-secondary-400 hover:text-secondary-600 hover:bg-secondary-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Bus Selection */}
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">Bus *</label>
+                <select
+                  value={formData.busId}
+                  onChange={(e) => setFormData({ ...formData, busId: e.target.value })}
+                  className="input"
+                  required
+                >
+                  <option value="">Select a bus</option>
+                  {buses.map(bus => (
+                    <option key={bus.id} value={bus.id}>{bus.bus_name} ({bus.bus_number})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Route Selection */}
+              <div>
+                <label className="block text-sm font-medium text-secondary-700 mb-2">Route *</label>
+                <select
+                  value={formData.routeId}
+                  onChange={(e) => setFormData({ ...formData, routeId: e.target.value })}
+                  className="input"
+                  required
+                >
+                  <option value="">Select a route</option>
+                  {routes.map(route => (
+                    <option key={route.id} value={route.id}>
+                      {route.from_city} → {route.to_city} (৳{route.price})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date & Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">Departure Date *</label>
+                  <input
+                    type="date"
+                    value={formData.departureDate}
+                    onChange={(e) => setFormData({ ...formData, departureDate: e.target.value })}
+                    className="input"
+                    min={new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary-700 mb-2">Departure Time *</label>
+                  <input
+                    type="time"
+                    value={formData.departureTime}
+                    onChange={(e) => setFormData({ ...formData, departureTime: e.target.value })}
+                    className="input"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={resetForm} className="flex-1 btn-secondary">Cancel</button>
+                <button type="submit" disabled={submitting} className="flex-1 btn-primary">
+                  {submitting ? (
+                    <span className="flex items-center justify-center">
+                      <span className="spinner w-4 h-4 mr-2" />
+                      {editingSchedule ? 'Updating...' : 'Creating...'}
+                    </span>
+                  ) : (editingSchedule ? 'Update Schedule' : 'Create Schedule')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

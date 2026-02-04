@@ -1,0 +1,265 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
+import { Bus, MapPin, Calendar, Ticket, TrendingUp, Plus, ArrowUpRight, ArrowDownRight, Users } from 'lucide-react';
+import { formatCurrency, formatDate, formatTime } from '@/lib/utils';
+
+interface DashboardStats {
+  totalBuses: number;
+  totalRoutes: number;
+  totalSchedules: number;
+  totalBookings: number;
+  totalRevenue: number;
+  todayBookings: number;
+}
+
+interface RecentBooking {
+  id: string;
+  booking_reference: string;
+  total_price: number;
+  status: string;
+  created_at: string;
+  seats_booked: number[];
+  user: { email: string; full_name: string };
+  schedule: {
+    route: { from_city: string; to_city: string };
+    departure_time: string;
+    bus: { bus_name: string };
+  };
+}
+
+export default function AdminOverviewPage() {
+  const supabase = createClient();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalBuses: 0,
+    totalRoutes: 0,
+    totalSchedules: 0,
+    totalBookings: 0,
+    totalRevenue: 0,
+    todayBookings: 0,
+  });
+  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch stats
+      const [buses, routes, schedules, bookings] = await Promise.all([
+        supabase.from('buses').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('routes').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('schedules').select('*', { count: 'exact', head: true }).eq('status', 'scheduled'),
+        supabase.from('bookings').select('total_price', { count: 'exact', head: true }),
+      ]);
+
+      // Calculate revenue
+      const { data: revenueData } = await supabase
+        .from('bookings')
+        .select('total_price')
+        .eq('status', 'confirmed');
+      const totalRevenue = revenueData?.reduce((sum, b) => sum + Number(b.total_price), 0) || 0;
+
+      // Today's bookings
+      const today = new Date().toISOString().split('T')[0];
+      const { count: todayCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today);
+
+      setStats({
+        totalBuses: buses.count || 0,
+        totalRoutes: routes.count || 0,
+        totalSchedules: schedules.count || 0,
+        totalBookings: bookings.count || 0,
+        totalRevenue,
+        todayBookings: todayCount || 0,
+      });
+
+      // Fetch recent bookings
+      const { data: recentData } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          user:profiles(email, full_name),
+          schedule:schedules(
+            route:routes(from_city, to_city),
+            departure_time,
+            bus:buses(bus_name)
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setRecentBookings(recentData || []);
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [supabase]);
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="spinner w-8 h-8 border-4 mx-auto" />
+      </div>
+    );
+  }
+
+  const statCards = [
+    { label: 'Total Buses', value: stats.totalBuses, icon: Bus, color: 'blue', href: '/dashboard/admin/buses' },
+    { label: 'Total Routes', value: stats.totalRoutes, icon: MapPin, color: 'emerald', href: '/dashboard/admin/routes' },
+    { label: 'Schedules', value: stats.totalSchedules, icon: Calendar, color: 'purple', href: '/dashboard/admin/schedules' },
+    { label: 'Total Bookings', value: stats.totalBookings, icon: Ticket, color: 'amber', href: '/dashboard/admin/bookings' },
+  ];
+
+  return (
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-secondary-900">Dashboard Overview</h1>
+        <p className="text-secondary-500">Welcome to the admin control panel</p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {statCards.map((stat) => (
+          <Link key={stat.label} href={stat.href} className="card-hover p-6 group">
+            <div className="flex items-center justify-between mb-4">
+              <div className={`w-12 h-12 bg-${stat.color}-100 rounded-xl flex items-center justify-center group-hover:bg-${stat.color}-500 transition-colors`}>
+                <stat.icon className={`w-6 h-6 text-${stat.color}-600 group-hover:text-white transition-colors`} />
+              </div>
+              <ArrowUpRight className="w-5 h-5 text-secondary-300 group-hover:text-secondary-400" />
+            </div>
+            <h3 className="text-3xl font-bold text-secondary-900">{stat.value.toLocaleString()}</h3>
+            <p className="text-secondary-500">{stat.label}</p>
+          </Link>
+        ))}
+      </div>
+
+      {/* Revenue & Quick Actions */}
+      <div className="grid lg:grid-cols-3 gap-6 mb-8">
+        {/* Revenue Card */}
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-green-600" />
+            </div>
+            <span className="badge badge-success">+12.5%</span>
+          </div>
+          <h3 className="text-3xl font-bold text-secondary-900">{formatCurrency(stats.totalRevenue)}</h3>
+          <p className="text-secondary-500">Total Revenue</p>
+          <p className="text-sm text-secondary-400 mt-2">{stats.todayBookings} bookings today</p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="lg:col-span-2 card p-6">
+          <h3 className="font-semibold text-secondary-900 mb-4">Quick Actions</h3>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <Link href="/dashboard/admin/buses" className="flex items-center gap-3 p-4 bg-secondary-50 rounded-xl hover:bg-secondary-100 transition-colors">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Plus className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-medium text-secondary-900">Add Bus</p>
+                <p className="text-sm text-secondary-500">New vehicle</p>
+              </div>
+            </Link>
+            <Link href="/dashboard/admin/routes" className="flex items-center gap-3 p-4 bg-secondary-50 rounded-xl hover:bg-secondary-100 transition-colors">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <Plus className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="font-medium text-secondary-900">Add Route</p>
+                <p className="text-sm text-secondary-500">New destination</p>
+              </div>
+            </Link>
+            <Link href="/dashboard/admin/schedules" className="flex items-center gap-3 p-4 bg-secondary-50 rounded-xl hover:bg-secondary-100 transition-colors">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Plus className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="font-medium text-secondary-900">Schedule</p>
+                <p className="text-sm text-secondary-500">New trip</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Bookings */}
+      <div className="card">
+        <div className="px-6 py-4 border-b border-secondary-100 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-secondary-900">Recent Bookings</h2>
+          <Link href="/dashboard/admin/bookings" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+            View All
+          </Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-secondary-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Reference</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Route</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Bus</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-secondary-100">
+              {recentBookings.length > 0 ? (
+                recentBookings.map((booking) => (
+                  <tr key={booking.id} className="hover:bg-secondary-50">
+                    <td className="px-6 py-4 text-sm font-medium text-secondary-900">
+                      {booking.booking_reference}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-secondary-600">
+                      {booking.schedule.route.from_city} → {booking.schedule.route.to_city}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-secondary-600">
+                      <div>
+                        <p className="font-medium">{booking.user.full_name || 'N/A'}</p>
+                        <p className="text-xs text-secondary-400">{booking.user.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-secondary-600">
+                      {booking.schedule.bus.bus_name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-secondary-600">
+                      {formatDate(booking.schedule.departure_time)}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-secondary-900">
+                      {formatCurrency(booking.total_price)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`badge ${
+                        booking.status === 'confirmed' ? 'badge-success' :
+                        booking.status === 'pending' ? 'badge-warning' :
+                        booking.status === 'cancelled' ? 'badge-danger' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {booking.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-secondary-500">
+                    No bookings yet
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+

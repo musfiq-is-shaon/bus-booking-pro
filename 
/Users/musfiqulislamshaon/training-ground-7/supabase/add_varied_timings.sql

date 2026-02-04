@@ -1,0 +1,300 @@
+
+-- =====================================================
+-- COMPREHENSIVE MIGRATION: Add Varied Bus Timings for ALL Routes
+-- Run this SQL to add multiple departure times for every route
+-- Fixes: ALL routes now have varied departure times throughout the day
+-- =====================================================
+
+-- First, clear existing schedules to start fresh
+TRUNCATE TABLE seat_availability CASCADE;
+TRUNCATE TABLE schedules CASCADE;
+
+-- =====================================================
+-- TEMP TABLE: Bus assignments for all routes
+-- =====================================================
+
+-- Create a temporary table to track bus assignments per route
+CREATE TEMP TABLE route_bus_assignment (
+    route_from text,
+    route_to text,
+    time_slot text,
+    bus_number text,
+    hours_offset int
+);
+
+-- Insert bus assignments for Dhaka routes (major routes - 3 times each)
+INSERT INTO route_bus_assignment VALUES
+-- Dhaka Routes (3 times: Morning, Afternoon, Night)
+('Dhaka', 'Chittagong', 'Morning', 'SYL-001', 6),
+('Dhaka', 'Chittagong', 'Afternoon', 'HAN-002', 14),
+('Dhaka', 'Chittagong', 'Night', 'SRT-004', 22),
+('Dhaka', 'Sylhet', 'Morning', 'SYL-001', 7),
+('Dhaka', 'Sylhet', 'Afternoon', 'HAN-002', 14),
+('Dhaka', 'Sylhet', 'Night', 'SRT-004', 21),
+('Dhaka', 'Coxs Bazar', 'Morning', 'SYL-001', 8),
+('Dhaka', 'Coxs Bazar', 'Afternoon', 'HAN-002', 15),
+('Dhaka', 'Coxs Bazar', 'Night', 'EAG-003', 22),
+('Dhaka', 'Barisal', 'Morning', 'HAN-002', 7),
+('Dhaka', 'Barisal', 'Afternoon', 'SRT-004', 13),
+('Dhaka', 'Barisal', 'Night', 'EAG-003', 21),
+('Dhaka', 'Rajshahi', 'Morning', 'SRT-004', 8),
+('Dhaka', 'Rajshahi', 'Afternoon', 'EAG-003', 15),
+('Dhaka', 'Rajshahi', 'Night', 'SYL-001', 22),
+('Dhaka', 'Khulna', 'Morning', 'EAG-003', 8),
+('Dhaka', 'Khulna', 'Afternoon', 'ENA-005', 14),
+('Dhaka', 'Khulna', 'Night', 'HAN-002', 21),
+('Dhaka', 'Rangpur', 'Morning', 'ENA-005', 7),
+('Dhaka', 'Rangpur', 'Afternoon', 'HAN-002', 14),
+('Dhaka', 'Rangpur', 'Night', 'SRT-004', 21),
+('Dhaka', 'Comilla', 'Morning', 'SYL-001', 6),
+('Dhaka', 'Comilla', 'Afternoon', 'HAN-002', 12),
+('Dhaka', 'Comilla', 'Night', 'SRT-004', 20),
+('Dhaka', 'Mymensingh', 'Morning', 'HAN-002', 8),
+('Dhaka', 'Mymensingh', 'Afternoon', 'ENA-005', 13),
+('Dhaka', 'Mymensingh', 'Night', 'EAG-003', 20),
+('Dhaka', 'Tangail', 'Morning', 'SRT-004', 9),
+('Dhaka', 'Tangail', 'Afternoon', 'EAG-003', 14),
+('Dhaka', 'Tangail', 'Night', 'SYL-001', 21),
+('Dhaka', 'Bogura', 'Morning', 'EAG-003', 7),
+('Dhaka', 'Bogura', 'Afternoon', 'SRT-004', 14),
+('Dhaka', 'Bogura', 'Night', 'ENA-005', 21),
+('Dhaka', 'Jessore', 'Morning', 'SYL-001', 8),
+('Dhaka', 'Jessore', 'Afternoon', 'HAN-002', 14),
+('Dhaka', 'Jessore', 'Night', 'EAG-003', 21),
+('Dhaka', 'Dinajpur', 'Morning', 'HAN-002', 7),
+('Dhaka', 'Dinajpur', 'Afternoon', 'SRT-004', 14),
+('Dhaka', 'Dinajpur', 'Night', 'ENA-005', 21),
+('Dhaka', 'Pabna', 'Morning', 'SRT-004', 8),
+('Dhaka', 'Pabna', 'Afternoon', 'EAG-003', 14),
+('Dhaka', 'Pabna', 'Night', 'SYL-001', 21),
+('Dhaka', 'Noakhali', 'Morning', 'EAG-003', 7),
+('Dhaka', 'Noakhali', 'Afternoon', 'SYL-001', 13),
+('Dhaka', 'Noakhali', 'Night', 'HAN-002', 20),
+('Dhaka', 'Feni', 'Morning', 'SYL-001', 7),
+('Dhaka', 'Feni', 'Afternoon', 'HAN-002', 13),
+('Dhaka', 'Feni', 'Night', 'SRT-004', 20),
+('Dhaka', 'Narayanganj', 'Morning', 'HAN-002', 6),
+('Dhaka', 'Narayanganj', 'Afternoon', 'SRT-004', 12),
+('Dhaka', 'Narayanganj', 'Night', 'EAG-003', 19),
+('Dhaka', 'Gazipur', 'Morning', 'SRT-004', 7),
+('Dhaka', 'Gazipur', 'Afternoon', 'EAG-003', 12),
+('Dhaka', 'Gazipur', 'Night', 'ENA-005', 18),
+('Dhaka', 'Savar', 'Morning', 'EAG-003', 7),
+('Dhaka', 'Savar', 'Afternoon', 'ENA-005', 12),
+('Dhaka', 'Savar', 'Night', 'SYL-001', 18);
+
+-- Reverse Routes (3 times each)
+INSERT INTO route_bus_assignment VALUES
+('Chittagong', 'Dhaka', 'Morning', 'EAG-003', 7),
+('Chittagong', 'Dhaka', 'Afternoon', 'ENA-005', 14),
+('Chittagong', 'Dhaka', 'Night', 'SYL-001', 21),
+('Sylhet', 'Dhaka', 'Morning', 'EAG-003', 6),
+('Sylhet', 'Dhaka', 'Afternoon', 'ENA-005', 12),
+('Sylhet', 'Dhaka', 'Night', 'SRT-004', 20),
+('Coxs Bazar', 'Dhaka', 'Morning', 'SRT-004', 7),
+('Coxs Bazar', 'Dhaka', 'Afternoon', 'ENA-005', 14),
+('Coxs Bazar', 'Dhaka', 'Night', 'SYL-001', 21),
+('Barisal', 'Dhaka', 'Morning', 'ENA-005', 6),
+('Barisal', 'Dhaka', 'Afternoon', 'SYL-001', 14),
+('Barisal', 'Dhaka', 'Night', 'HAN-002', 22),
+('Rajshahi', 'Dhaka', 'Morning', 'SYL-001', 6),
+('Rajshahi', 'Dhaka', 'Afternoon', 'HAN-002', 13),
+('Rajshahi', 'Dhaka', 'Night', 'SRT-004', 21),
+('Khulna', 'Dhaka', 'Morning', 'SRT-004', 7),
+('Khulna', 'Dhaka', 'Afternoon', 'EAG-003', 13),
+('Khulna', 'Dhaka', 'Night', 'ENA-005', 20),
+('Rangpur', 'Dhaka', 'Morning', 'EAG-003', 6),
+('Rangpur', 'Dhaka', 'Afternoon', 'SRT-004', 12),
+('Rangpur', 'Dhaka', 'Night', 'SYL-001', 20),
+('Comilla', 'Dhaka', 'Morning', 'SRT-004', 8),
+('Comilla', 'Dhaka', 'Afternoon', 'EAG-003', 14),
+('Comilla', 'Dhaka', 'Night', 'HAN-002', 20),
+('Mymensingh', 'Dhaka', 'Morning', 'SYL-001', 7),
+('Mymensingh', 'Dhaka', 'Afternoon', 'SRT-004', 12),
+('Mymensingh', 'Dhaka', 'Night', 'EAG-003', 19),
+('Tangail', 'Dhaka', 'Morning', 'SYL-001', 7),
+('Tangail', 'Dhaka', 'Afternoon', 'HAN-002', 13),
+('Tangail', 'Dhaka', 'Night', 'ENA-005', 20),
+('Bogura', 'Dhaka', 'Morning', 'ENA-005', 6),
+('Bogura', 'Dhaka', 'Afternoon', 'SYL-001', 12),
+('Bogura', 'Dhaka', 'Night', 'HAN-002', 20),
+('Jessore', 'Dhaka', 'Morning', 'HAN-002', 7),
+('Jessore', 'Dhaka', 'Afternoon', 'SRT-004', 12),
+('Jessore', 'Dhaka', 'Night', 'EAG-003', 19),
+('Dinajpur', 'Dhaka', 'Morning', 'SRT-004', 6),
+('Dinajpur', 'Dhaka', 'Afternoon', 'EAG-003', 12),
+('Dinajpur', 'Dhaka', 'Night', 'ENA-005', 19),
+('Pabna', 'Dhaka', 'Morning', 'EAG-003', 7),
+('Pabna', 'Dhaka', 'Afternoon', 'SYL-001', 12),
+('Pabna', 'Dhaka', 'Night', 'HAN-002', 19),
+('Noakhali', 'Dhaka', 'Morning', 'SYL-001', 6),
+('Noakhali', 'Dhaka', 'Afternoon', 'HAN-002', 12),
+('Noakhali', 'Dhaka', 'Night', 'SRT-004', 19),
+('Feni', 'Dhaka', 'Morning', 'HAN-002', 6),
+('Feni', 'Dhaka', 'Afternoon', 'SRT-004', 12),
+('Feni', 'Dhaka', 'Night', 'EAG-003', 19),
+('Narayanganj', 'Dhaka', 'Morning', 'SRT-004', 6),
+('Narayanganj', 'Dhaka', 'Afternoon', 'EAG-003', 11),
+('Narayanganj', 'Dhaka', 'Night', 'ENA-005', 18),
+('Gazipur', 'Dhaka', 'Morning', 'EAG-003', 6),
+('Gazipur', 'Dhaka', 'Afternoon', 'ENA-005', 11),
+('Gazipur', 'Dhaka', 'Night', 'SYL-001', 18),
+('Savar', 'Dhaka', 'Morning', 'ENA-005', 6),
+('Savar', 'Dhaka', 'Afternoon', 'SYL-001', 11),
+('Savar', 'Dhaka', 'Night', 'HAN-002', 18);
+
+-- Near Dhaka Routes (2 times)
+INSERT INTO route_bus_assignment VALUES
+('Narayanganj', 'Coxs Bazar', 'Morning', 'EAG-003', 6),
+('Narayanganj', 'Coxs Bazar', 'Night', 'SRT-004', 21),
+('Coxs Bazar', 'Narayanganj', 'Morning', 'SYL-001', 6),
+('Coxs Bazar', 'Narayanganj', 'Night', 'HAN-002', 20),
+('Gazipur', 'Tangail', 'Morning', 'SYL-001', 7),
+('Gazipur', 'Tangail', 'Afternoon', 'ENA-005', 14),
+('Tangail', 'Gazipur', 'Morning', 'HAN-002', 7),
+('Tangail', 'Gazipur', 'Afternoon', 'SRT-004', 14),
+('Mymensingh', 'Tangail', 'Morning', 'SRT-004', 8),
+('Mymensingh', 'Tangail', 'Afternoon', 'EAG-003', 15),
+('Tangail', 'Mymensingh', 'Morning', 'EAG-003', 8),
+('Tangail', 'Mymensingh', 'Afternoon', 'ENA-005', 15),
+('Mymensingh', 'Bogura', 'Morning', 'ENA-005', 7),
+('Mymensingh', 'Bogura', 'Afternoon', 'SYL-001', 14),
+('Bogura', 'Mymensingh', 'Morning', 'HAN-002', 7),
+('Bogura', 'Mymensingh', 'Afternoon', 'SRT-004', 14),
+('Tangail', 'Bogura', 'Morning', 'SRT-004', 8),
+('Tangail', 'Bogura', 'Afternoon', 'SYL-001', 15),
+('Bogura', 'Tangail', 'Morning', 'EAG-003', 8),
+('Bogura', 'Tangail', 'Afternoon', 'HAN-002', 15);
+
+-- Internal Routes (Chittagong Division)
+INSERT INTO route_bus_assignment VALUES
+('Chittagong', 'Coxs Bazar', 'Morning', 'SYL-001', 7),
+('Chittagong', 'Coxs Bazar', 'Afternoon', 'HAN-002', 14),
+('Coxs Bazar', 'Chittagong', 'Morning', 'SRT-004', 6),
+('Coxs Bazar', 'Chittagong', 'Afternoon', 'EAG-003', 13),
+('Chittagong', 'Sylhet', 'Morning', 'EAG-003', 6),
+('Chittagong', 'Sylhet', 'Night', 'ENA-005', 21),
+('Sylhet', 'Chittagong', 'Morning', 'SYL-001', 6),
+('Sylhet', 'Chittagong', 'Night', 'HAN-002', 20),
+('Chittagong', 'Comilla', 'Morning', 'HAN-002', 7),
+('Chittagong', 'Comilla', 'Afternoon', 'SRT-004', 14),
+('Comilla', 'Chittagong', 'Morning', 'EAG-003', 7),
+('Comilla', 'Chittagong', 'Afternoon', 'ENA-005', 14),
+('Chittagong', 'Noakhali', 'Morning', 'SRT-004', 7),
+('Chittagong', 'Noakhali', 'Afternoon', 'SYL-001', 14),
+('Noakhali', 'Chittagong', 'Morning', 'EAG-003', 6),
+('Noakhali', 'Chittagong', 'Afternoon', 'HAN-002', 13),
+('Chittagong', 'Feni', 'Morning', 'EAG-003', 7),
+('Chittagong', 'Feni', 'Afternoon', 'SYL-001', 14),
+('Feni', 'Chittagong', 'Morning', 'SRT-004', 6),
+('Feni', 'Chittagong', 'Afternoon', 'HAN-002', 13);
+
+-- Internal Routes (Sylhet Division)
+INSERT INTO route_bus_assignment VALUES
+('Sylhet', 'Comilla', 'Morning', 'SYL-001', 6),
+('Sylhet', 'Comilla', 'Night', 'HAN-002', 20),
+('Comilla', 'Sylhet', 'Morning', 'SRT-004', 6),
+('Comilla', 'Sylhet', 'Night', 'EAG-003', 20),
+('Sylhet', 'Mymensingh', 'Morning', 'HAN-002', 6),
+('Sylhet', 'Mymensingh', 'Night', 'EAG-003', 20),
+('Mymensingh', 'Sylhet', 'Morning', 'ENA-005', 6),
+('Mymensingh', 'Sylhet', 'Night', 'SYL-001', 20);
+
+-- Internal Routes (Rajshahi Division)
+INSERT INTO route_bus_assignment VALUES
+('Rajshahi', 'Bogura', 'Morning', 'SYL-001', 7),
+('Rajshahi', 'Bogura', 'Afternoon', 'SRT-004', 14),
+('Bogura', 'Rajshahi', 'Morning', 'HAN-002', 7),
+('Bogura', 'Rajshahi', 'Afternoon', 'EAG-003', 14),
+('Rajshahi', 'Pabna', 'Morning', 'EAG-003', 7),
+('Rajshahi', 'Pabna', 'Afternoon', 'ENA-005', 14),
+('Pabna', 'Rajshahi', 'Morning', 'SYL-001', 7),
+('Pabna', 'Rajshahi', 'Afternoon', 'HAN-002', 14),
+('Rajshahi', 'Dinajpur', 'Morning', 'SRT-004', 6),
+('Rajshahi', 'Dinajpur', 'Night', 'SYL-001', 21),
+('Dinajpur', 'Rajshahi', 'Morning', 'HAN-002', 6),
+('Dinajpur', 'Rajshahi', 'Night', 'EAG-003', 20);
+
+-- Internal Routes (Khulna Division)
+INSERT INTO route_bus_assignment VALUES
+('Khulna', 'Jessore', 'Morning', 'EAG-003', 7),
+('Khulna', 'Jessore', 'Afternoon', 'SYL-001', 14),
+('Jessore', 'Khulna', 'Morning', 'ENA-005', 7),
+('Jessore', 'Khulna', 'Afternoon', 'HAN-002', 14),
+('Khulna', 'Barisal', 'Morning', 'SYL-001', 6),
+('Khulna', 'Barisal', 'Night', 'SRT-004', 20),
+('Barisal', 'Khulna', 'Morning', 'EAG-003', 6),
+('Barisal', 'Khulna', 'Night', 'ENA-005', 20);
+
+-- Internal Routes (Rangpur & Coxs Bazar)
+INSERT INTO route_bus_assignment VALUES
+('Rangpur', 'Bogura', 'Morning', 'SYL-001', 7),
+('Rangpur', 'Bogura', 'Afternoon', 'SRT-004', 14),
+('Bogura', 'Rangpur', 'Morning', 'HAN-002', 7),
+('Bogura', 'Rangpur', 'Afternoon', 'EAG-003', 14),
+('Rangpur', 'Dinajpur', 'Morning', 'EAG-003', 7),
+('Rangpur', 'Dinajpur', 'Afternoon', 'ENA-005', 14),
+('Dinajpur', 'Rangpur', 'Morning', 'SYL-001', 7),
+('Dinajpur', 'Rangpur', 'Afternoon', 'HAN-002', 14),
+('Coxs Bazar', 'Sylhet', 'Morning', 'HAN-002', 5),
+('Coxs Bazar', 'Sylhet', 'Night', 'EAG-003', 21),
+('Sylhet', 'Coxs Bazar', 'Morning', 'SRT-004', 5),
+('Sylhet', 'Coxs Bazar', 'Night', 'ENA-005', 21);
+
+-- =====================================================
+-- INSERT SCHEDULES FROM ASSIGNMENTS
+-- =====================================================
+INSERT INTO schedules (bus_id, route_id, departure_time, arrival_time, available_seats, status)
+SELECT 
+    b.id as bus_id,
+    r.id as route_id,
+    (CURRENT_DATE + gs.day_offset) AT TIME ZONE 'UTC' + (rba.hours_offset || ' hours')::interval as departure_time,
+    (CURRENT_DATE + gs.day_offset) AT TIME ZONE 'UTC' + (rba.hours_offset || ' hours')::interval + (r.estimated_duration_minutes || ' minutes')::interval as arrival_time,
+    b.total_seats as available_seats,
+    'scheduled' as status
+FROM route_bus_assignment rba
+CROSS JOIN generate_series(0, 6) AS gs(day_offset)
+JOIN buses b ON b.bus_number = rba.bus_number
+JOIN routes r ON r.from_city = rba.route_from AND r.to_city = rba.route_to;
+
+-- =====================================================
+-- CLEANUP
+-- =====================================================
+DROP TABLE route_bus_assignment;
+
+-- =====================================================
+-- ADD SEAT AVAILABILITY FOR ALL SCHEDULES
+-- =====================================================
+INSERT INTO seat_availability (schedule_id, seat_number, status)
+SELECT s.id, gs.seat_number, 'available'
+FROM schedules s
+CROSS JOIN generate_series(1, (SELECT total_seats FROM buses WHERE id = s.bus_id)) AS gs(seat_number);
+
+-- =====================================================
+-- UPDATE AVAILABLE SEATS COUNT
+-- =====================================================
+UPDATE schedules
+SET available_seats = (
+    SELECT COUNT(*) FROM seat_availability sa
+    WHERE sa.schedule_id = schedules.id AND sa.status = 'available'
+);
+
+-- =====================================================
+-- VERIFY DATA
+-- =====================================================
+SELECT 'Buses: ' || COUNT(*)::text FROM buses;
+SELECT 'Routes: ' || COUNT(*)::text FROM routes;
+SELECT 'Schedules: ' || COUNT(*)::text FROM schedules;
+SELECT 'Seat Availability: ' || COUNT(*)::text FROM seat_availability;
+
+-- Show summary
+SELECT 
+    r.from_city || ' -> ' || r.to_city as route,
+    COUNT(s.id) as num_schedules
+FROM routes r
+LEFT JOIN schedules s ON r.id = s.route_id
+WHERE s.departure_time::date = CURRENT_DATE OR s.id IS NULL
+GROUP BY r.from_city, r.to_city
+ORDER BY r.from_city, r.to_city
+LIMIT 50;
+
