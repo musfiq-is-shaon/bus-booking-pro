@@ -32,8 +32,15 @@ export const dynamic = 'force-dynamic';
 export default function HomePage() {
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
-  const supabase = createClient();
   const { theme, toggleTheme } = useTheme();
+  
+  // Lazy-load Supabase client inside useEffect to avoid build-time errors
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
+
+  useEffect(() => {
+    // Initialize Supabase client on the client side only
+    setSupabase(createClient());
+  }, []);
 
   const [searchData, setSearchData] = useState({
     from: '',
@@ -50,6 +57,7 @@ export default function HomePage() {
   }, []);
 
   const checkUser = async () => {
+    if (!supabase) return;
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
@@ -61,6 +69,7 @@ export default function HomePage() {
   };
 
   const handleLogout = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
     window.location.reload();

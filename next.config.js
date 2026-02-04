@@ -8,6 +8,9 @@ const nextConfig = {
       },
     ],
   },
+  // Ensure proper headers for security and performance
+  poweredByHeader: false,
+  compress: true,
 };
 
 export default nextConfig;
